@@ -1,0 +1,1179 @@
+{
+  "version": 1,
+  "observed_at": "2026-09-08T22:38:00Z",
+  "origin": "Turk_Haber_Analizi_Kaynak_Listesi.xlsx",
+  "note": "Provided observations, not a current feed audit. Political and visitor metadata intentionally excluded from model inputs.",
+  "sources": [
+    {
+      "id": "hurriyet",
+      "name": "Hürriyet",
+      "website": "https://www.hurriyet.com.tr",
+      "feeds": [
+        {
+          "url": "https://www.hurriyet.com.tr/rss/gundem",
+          "category": "Gündem",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        },
+        {
+          "url": "https://www.hurriyet.com.tr/rss/egitim",
+          "category": "Eğitim",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.hurriyet.com.tr/rss/dunya",
+          "category": "Dünya",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        },
+        {
+          "url": "https://www.hurriyet.com.tr/rss/yazarlar",
+          "category": "Yazarlar",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        },
+        {
+          "url": "https://www.hurriyet.com.tr/rss/ekonomi",
+          "category": "Ekonomi",
+          "provided_status": "terk edilmiş",
+          "provided_latest": "2026-06-07",
+          "enabled": false
+        },
+        {
+          "url": "https://www.hurriyet.com.tr/rss/siyaset",
+          "category": "Siyaset",
+          "provided_status": "terk edilmiş",
+          "provided_latest": "2019-11-08",
+          "enabled": false
+        }
+      ]
+    },
+    {
+      "id": "mynet",
+      "name": "Mynet",
+      "website": "https://www.mynet.com",
+      "feeds": []
+    },
+    {
+      "id": "sabah",
+      "name": "Sabah",
+      "website": "https://www.sabah.com.tr",
+      "feeds": [
+        {
+          "url": "https://www.sabah.com.tr/rss/dunya.xml",
+          "category": "Dünya",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.sabah.com.tr/rss/ekonomi.xml",
+          "category": "Ekonomi",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        },
+        {
+          "url": "https://www.sabah.com.tr/rss/gundem.xml",
+          "category": "Gündem",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        },
+        {
+          "url": "https://www.sabah.com.tr/rss/egitim.xml",
+          "category": "Eğitim",
+          "provided_status": "terk edilmiş",
+          "provided_latest": "2026-08-16",
+          "enabled": false
+        },
+        {
+          "url": "https://www.sabah.com.tr/rss/kultur-sanat.xml",
+          "category": "Kültür Sanat",
+          "provided_status": "terk edilmiş",
+          "provided_latest": "2026-06-15",
+          "enabled": false
+        },
+        {
+          "url": "https://www.sabah.com.tr/rss/yazarlar.xml",
+          "category": "Yazarlar",
+          "provided_status": "terk edilmiş",
+          "provided_latest": "2026-07-31",
+          "enabled": false
+        }
+      ]
+    },
+    {
+      "id": "milliyet",
+      "name": "Milliyet",
+      "website": "https://www.milliyet.com.tr",
+      "feeds": [
+        {
+          "url": "https://www.milliyet.com.tr/rss/rssnew/yazarlarrss.xml",
+          "category": "Yazarlar",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        },
+        {
+          "url": "https://www.milliyet.com.tr/rss/rssnew/teknolojirss.xml",
+          "category": "Teknoloji",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.milliyet.com.tr/rss/rssnew/dunyarss.xml",
+          "category": "Dünya",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        },
+        {
+          "url": "https://www.milliyet.com.tr/rss/rssnew/gundemrss.xml",
+          "category": "Gündem",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.milliyet.com.tr/rss/rssnew/egitimrss.xml",
+          "category": null,
+          "provided_status": "yanıt yok — 404",
+          "provided_latest": null,
+          "enabled": false
+        },
+        {
+          "url": "https://www.milliyet.com.tr/rss/rssnew/ekonomirss.xml",
+          "category": null,
+          "provided_status": "yanıt yok — feed URL resolves but serves identical content to the gundem (sondakika) feed, not a distinct ekonomi category feed",
+          "provided_latest": null,
+          "enabled": false
+        },
+        {
+          "url": "https://www.milliyet.com.tr/rss/rssnew/kitaprss.xml",
+          "category": null,
+          "provided_status": "yanıt yok — empty - channel metadata only, no items",
+          "provided_latest": null,
+          "enabled": false
+        },
+        {
+          "url": "https://www.milliyet.com.tr/rss/rssnew/kultursanatrss.xml",
+          "category": null,
+          "provided_status": "yanıt yok — 404",
+          "provided_latest": null,
+          "enabled": false
+        },
+        {
+          "url": "https://www.milliyet.com.tr/rss/rssnew/siyasetrss.xml",
+          "category": "Siyaset",
+          "provided_status": "terk edilmiş",
+          "provided_latest": "2024-02-08",
+          "enabled": false
+        }
+      ]
+    },
+    {
+      "id": "sozcu",
+      "name": "Sözcü",
+      "website": "https://www.sozcu.com.tr",
+      "feeds": [
+        {
+          "url": "https://www.sozcu.com.tr/feeds-rss-category-dunya",
+          "category": "Dünya",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        },
+        {
+          "url": "https://www.sozcu.com.tr/feeds-rss-category-ekonomi",
+          "category": "Ekonomi",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        },
+        {
+          "url": "https://www.sozcu.com.tr/feeds-rss-category-gundem",
+          "category": "Gündem",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-04",
+          "enabled": true
+        },
+        {
+          "url": "https://www.sozcu.com.tr/feeds-rss-category-egitim",
+          "category": "Eğitim",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "id": "sondakika",
+      "name": "Sondakika.com",
+      "website": "https://www.sondakika.com",
+      "feeds": []
+    },
+    {
+      "id": "haberturk",
+      "name": "Habertürk",
+      "website": "https://www.haberturk.com",
+      "feeds": [
+        {
+          "url": "https://www.haberturk.com/rss",
+          "category": "main",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.haberturk.com/rss/dunya.xml",
+          "category": "dunya",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.haberturk.com/rss/ekonomi.xml",
+          "category": "ekonomi",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-04",
+          "enabled": true
+        },
+        {
+          "url": "https://www.haberturk.com/rss/gundem.xml",
+          "category": "gundem",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.haberturk.com/rss/kultur-sanat.xml",
+          "category": "kultur-sanat",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.haberturk.com/rss/siyaset.xml",
+          "category": null,
+          "provided_status": "yanıt yok — feed_returns_unrelated_stale_content_dated_2019_not_in_target_range",
+          "provided_latest": null,
+          "enabled": false
+        },
+        {
+          "url": "https://www.haberturk.com/rss/yazarlar.xml",
+          "category": null,
+          "provided_status": "yanıt yok — feed_returns_stale_content_dated_may-june_2026_not_in_target_range",
+          "provided_latest": null,
+          "enabled": false
+        }
+      ]
+    },
+    {
+      "id": "halktv",
+      "name": "Halk TV",
+      "website": "https://halktv.com.tr",
+      "feeds": [
+        {
+          "url": "https://halktv.com.tr/rss",
+          "category": "main",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "id": "onedio",
+      "name": "Onedio",
+      "website": "https://onedio.com",
+      "feeds": []
+    },
+    {
+      "id": "birgun",
+      "name": "BirGün",
+      "website": "https://www.birgun.net",
+      "feeds": [
+        {
+          "url": "https://www.birgun.net/rss/kategori/siyaset-8",
+          "category": "Politics",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "id": "t24",
+      "name": "T24",
+      "website": "https://t24.com.tr",
+      "feeds": [
+        {
+          "url": "https://t24.com.tr/rss",
+          "category": null,
+          "provided_status": "yanıt yok — 404 - no working RSS feed found; homepage HTML has no <link rel=alternate type=application/rss+xml>, no /feed, /rss.xml, /rss/*.xml, /rss.php variants found; robots.txt/sitemap.xml show no feed reference; Wayback Machine shows /rss returned 200 as of 2026-02-10 but is 404 now with no replacement discoverable",
+          "provided_latest": null,
+          "enabled": false
+        }
+      ]
+    },
+    {
+      "id": "ntv",
+      "name": "NTV",
+      "website": "https://www.ntv.com.tr",
+      "feeds": [
+        {
+          "url": "https://www.ntv.com.tr/gundem.rss",
+          "category": "gundem",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-08",
+          "enabled": true
+        },
+        {
+          "url": "https://www.ntv.com.tr/dunya.rss",
+          "category": "dunya",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-08",
+          "enabled": true
+        },
+        {
+          "url": "https://www.ntv.com.tr/egitim.rss",
+          "category": "egitim",
+          "provided_status": "terk edilmiş",
+          "provided_latest": "2026-08-16",
+          "enabled": false
+        },
+        {
+          "url": "https://www.ntv.com.tr/ekonomi.rss",
+          "category": "ekonomi",
+          "provided_status": "terk edilmiş",
+          "provided_latest": "2026-08-12",
+          "enabled": false
+        },
+        {
+          "url": "https://www.ntv.com.tr/saglik.rss",
+          "category": "saglik",
+          "provided_status": "terk edilmiş",
+          "provided_latest": "2026-07-12",
+          "enabled": false
+        },
+        {
+          "url": "https://www.ntv.com.tr/teknoloji.rss",
+          "category": "teknoloji",
+          "provided_status": "terk edilmiş",
+          "provided_latest": "2026-08-26",
+          "enabled": false
+        }
+      ]
+    },
+    {
+      "id": "karar",
+      "name": "Karar",
+      "website": "https://www.karar.com",
+      "feeds": [
+        {
+          "url": "https://www.karar.com/service/rss.php",
+          "category": "main",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "id": "memurlar",
+      "name": "Memurlar.net",
+      "website": "https://www.memurlar.net",
+      "feeds": []
+    },
+    {
+      "id": "yenisafak",
+      "name": "Yeni Şafak",
+      "website": "https://www.yenisafak.com",
+      "feeds": [
+        {
+          "url": "https://www.yenisafak.com/rss?xml=gundem",
+          "category": "Gündem (main)",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.yenisafak.com/rss?xml=dunya",
+          "category": "Dünya",
+          "provided_status": "terk edilmiş",
+          "provided_latest": "2026-08-30",
+          "enabled": false
+        },
+        {
+          "url": "https://www.yenisafak.com/rss?xml=egitim",
+          "category": null,
+          "provided_status": "yanıt yok — feed URL resolves but serves identical content to the main/gundem feed, not a distinct egitim category feed",
+          "provided_latest": null,
+          "enabled": false
+        },
+        {
+          "url": "https://www.yenisafak.com/rss?xml=ekonomi",
+          "category": null,
+          "provided_status": "yanıt yok — feed URL resolves but serves identical content to the main/gundem feed, not a distinct ekonomi category feed",
+          "provided_latest": null,
+          "enabled": false
+        },
+        {
+          "url": "https://www.yenisafak.com/rss?xml=kultur-sanat",
+          "category": null,
+          "provided_status": "yanıt yok — feed URL resolves but serves identical content to the main/gundem feed, not a distinct kultur-sanat category feed",
+          "provided_latest": null,
+          "enabled": false
+        },
+        {
+          "url": "https://www.yenisafak.com/rss?xml=siyaset",
+          "category": null,
+          "provided_status": "yanıt yok — empty - channel metadata only, no items",
+          "provided_latest": null,
+          "enabled": false
+        },
+        {
+          "url": "https://www.yenisafak.com/rss?xml=yazarlar",
+          "category": null,
+          "provided_status": "yanıt yok — feed URL resolves but serves identical content to the main/gundem feed, not a distinct yazarlar category feed",
+          "provided_latest": null,
+          "enabled": false
+        }
+      ]
+    },
+    {
+      "id": "haber7",
+      "name": "Haber7",
+      "website": "https://www.haber7.com",
+      "feeds": [
+        {
+          "url": "https://i12.haber7.net/sondakika/newsstand/latest.xml",
+          "category": "main",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-08",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "id": "bloomberght",
+      "name": "Bloomberg HT",
+      "website": "https://www.bloomberght.com",
+      "feeds": []
+    },
+    {
+      "id": "cnnturk",
+      "name": "CNN Türk",
+      "website": "https://www.cnnturk.com",
+      "feeds": [
+        {
+          "url": "https://www.cnnturk.com/feed/rss/all/news",
+          "category": null,
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.cnnturk.com/feed/rss/dunya/news",
+          "category": null,
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.cnnturk.com/feed/rss/ekonomi/news",
+          "category": null,
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-01",
+          "enabled": true
+        },
+        {
+          "url": "https://www.cnnturk.com/feed/rss/yazarlar",
+          "category": null,
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "id": "akit",
+      "name": "Yeni Akit",
+      "website": "https://www.yeniakit.com.tr",
+      "feeds": [
+        {
+          "url": "https://www.yeniakit.com.tr/rss/haber/dunya",
+          "category": "dunya",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        },
+        {
+          "url": "https://www.yeniakit.com.tr/rss/haber/ekonomi",
+          "category": "ekonomi",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        },
+        {
+          "url": "https://www.yeniakit.com.tr/rss/haber/gundem",
+          "category": "gundem",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        },
+        {
+          "url": "https://www.yeniakit.com.tr/rss/haber/siyaset",
+          "category": "siyaset",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.yeniakit.com.tr/rss/haber/medya",
+          "category": "medya",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "id": "internethaber",
+      "name": "İnternet Haber",
+      "website": "https://www.internethaber.com",
+      "feeds": []
+    },
+    {
+      "id": "aa",
+      "name": "Anadolu Ajansı",
+      "website": "https://www.aa.com.tr",
+      "feeds": []
+    },
+    {
+      "id": "tv100",
+      "name": "TV100",
+      "website": "https://www.tv100.com",
+      "feeds": [
+        {
+          "url": "https://www.tv100.com/export/rss/dunya",
+          "category": "dunya",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.tv100.com/export/rss/ekonomia",
+          "category": "ekonomia",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.tv100.com/export/rss/siyaset",
+          "category": "siyaset",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.tv100.com/export/rss/yazarlar",
+          "category": "yazarlar",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.tv100.com/export/rss/egitim",
+          "category": "egitim",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.tv100.com/rss",
+          "category": "main",
+          "provided_status": "yanıt yok — 404",
+          "provided_latest": null,
+          "enabled": false
+        }
+      ]
+    },
+    {
+      "id": "ekonomim",
+      "name": "Ekonomim",
+      "website": "https://www.ekonomim.com",
+      "feeds": []
+    },
+    {
+      "id": "nefes",
+      "name": "Nefes",
+      "website": "https://www.nefes.com.tr",
+      "feeds": []
+    },
+    {
+      "id": "diken",
+      "name": "Diken",
+      "website": "https://www.diken.com.tr",
+      "feeds": [
+        {
+          "url": "https://www.diken.com.tr/kategori/dunya/feed/",
+          "category": "Dünya",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.diken.com.tr/kategori/ekonomi/feed/",
+          "category": "Ekonomi",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        },
+        {
+          "url": "https://www.diken.com.tr/feed/",
+          "category": "Ana Akış",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        },
+        {
+          "url": "https://www.diken.com.tr/kategori/surdurulebilirlik/feed/",
+          "category": "Sürdürülebilirlik",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-03",
+          "enabled": true
+        },
+        {
+          "url": "https://www.diken.com.tr/kategori/agora/feed/",
+          "category": "Agora (Yazarlar)",
+          "provided_status": "terk edilmiş",
+          "provided_latest": "2026-08-26",
+          "enabled": false
+        },
+        {
+          "url": "https://www.diken.com.tr/kategori/analiz/feed/",
+          "category": "Analiz",
+          "provided_status": "terk edilmiş",
+          "provided_latest": "2026-08-23",
+          "enabled": false
+        },
+        {
+          "url": "https://www.diken.com.tr/kategori/medya/feed/",
+          "category": "Medya",
+          "provided_status": "terk edilmiş",
+          "provided_latest": "2026-08-28",
+          "enabled": false
+        }
+      ]
+    },
+    {
+      "id": "trthaber",
+      "name": "TRT Haber",
+      "website": "https://www.trthaber.com",
+      "feeds": [
+        {
+          "url": "https://www.trthaber.com/sondakika.rss",
+          "category": null,
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        },
+        {
+          "url": "https://www.trthaber.com/manset.rss",
+          "category": "Manşet",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.trthaber.com/rss",
+          "category": null,
+          "provided_status": "yanıt yok — 404 (no RSS directory page)",
+          "provided_latest": null,
+          "enabled": false
+        },
+        {
+          "url": "https://www.trthaber.com/rss.html",
+          "category": null,
+          "provided_status": "yanıt yok — 404 (no RSS directory page)",
+          "provided_latest": null,
+          "enabled": false
+        },
+        {
+          "url": "https://www.trthaber.com/ekonomi.rss",
+          "category": null,
+          "provided_status": "yanıt yok — 404",
+          "provided_latest": null,
+          "enabled": false
+        },
+        {
+          "url": "https://www.trthaber.com/dunya.rss",
+          "category": null,
+          "provided_status": "yanıt yok — 404",
+          "provided_latest": null,
+          "enabled": false
+        },
+        {
+          "url": "https://www.trthaber.com/gundem.rss",
+          "category": null,
+          "provided_status": "yanıt yok — 404",
+          "provided_latest": null,
+          "enabled": false
+        }
+      ]
+    },
+    {
+      "id": "cumhuriyet",
+      "name": "Cumhuriyet",
+      "website": "https://www.cumhuriyet.com.tr",
+      "feeds": [
+        {
+          "url": "https://www.cumhuriyet.com.tr/rss/son_dakika.xml",
+          "category": "main",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.cumhuriyet.com.tr/rss/ekonomi.xml",
+          "category": "ekonomi",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.cumhuriyet.com.tr/rss/dunya.xml",
+          "category": null,
+          "provided_status": "yanıt yok — 500",
+          "provided_latest": null,
+          "enabled": false
+        },
+        {
+          "url": "https://www.cumhuriyet.com.tr/rss/siyaset.xml",
+          "category": null,
+          "provided_status": "yanıt yok — 500",
+          "provided_latest": null,
+          "enabled": false
+        },
+        {
+          "url": "https://www.cumhuriyet.com.tr/rss/turkiye.xml",
+          "category": null,
+          "provided_status": "yanıt yok — 500",
+          "provided_latest": null,
+          "enabled": false
+        },
+        {
+          "url": "https://www.cumhuriyet.com.tr/rss/yazarlar.xml",
+          "category": null,
+          "provided_status": "yanıt yok — 500",
+          "provided_latest": null,
+          "enabled": false
+        }
+      ]
+    },
+    {
+      "id": "ensonhaber",
+      "name": "En Son Haber",
+      "website": "https://www.ensonhaber.com",
+      "feeds": [
+        {
+          "url": "https://www.ensonhaber.com/rss/ensonhaber.xml",
+          "category": "main",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-08",
+          "enabled": true
+        },
+        {
+          "url": "https://www.ensonhaber.com/rss/dunya.xml",
+          "category": "dunya",
+          "provided_status": "terk edilmiş",
+          "provided_latest": "2026-07-17",
+          "enabled": false
+        },
+        {
+          "url": "https://www.ensonhaber.com/rss/ekonomi.xml",
+          "category": "ekonomi",
+          "provided_status": "terk edilmiş",
+          "provided_latest": "2026-07-17",
+          "enabled": false
+        },
+        {
+          "url": "https://www.ensonhaber.com/rss/medya.xml",
+          "category": "medya",
+          "provided_status": "terk edilmiş",
+          "provided_latest": "2026-07-17",
+          "enabled": false
+        },
+        {
+          "url": "https://www.ensonhaber.com/rss/politika.xml",
+          "category": "politika",
+          "provided_status": "terk edilmiş",
+          "provided_latest": "2026-07-15",
+          "enabled": false
+        },
+        {
+          "url": "https://www.ensonhaber.com/rss/teknoloji.xml",
+          "category": "teknoloji",
+          "provided_status": "terk edilmiş",
+          "provided_latest": "2026-07-17",
+          "enabled": false
+        }
+      ]
+    },
+    {
+      "id": "aksam",
+      "name": "Akşam",
+      "website": "https://www.aksam.com.tr",
+      "feeds": []
+    },
+    {
+      "id": "posta",
+      "name": "Posta",
+      "website": "https://www.posta.com.tr",
+      "feeds": []
+    },
+    {
+      "id": "haberglobal",
+      "name": "Haber Global",
+      "website": "https://haberglobal.com.tr",
+      "feeds": []
+    },
+    {
+      "id": "odatv",
+      "name": "Oda TV",
+      "website": "https://www.odatv.com",
+      "feeds": []
+    },
+    {
+      "id": "gercekgundem",
+      "name": "Gerçek Gündem",
+      "website": "https://www.gercekgundem.com",
+      "feeds": [
+        {
+          "url": "https://www.gercekgundem.com/rss",
+          "category": "main",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.gercekgundem.com/rss/dunya",
+          "category": "dunya",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        },
+        {
+          "url": "https://www.gercekgundem.com/rss/ekonomi",
+          "category": "ekonomi",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.gercekgundem.com/rss/yazarlar",
+          "category": "yazarlar",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        },
+        {
+          "url": "https://www.gercekgundem.com/rss/siyaset",
+          "category": "siyaset",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-02",
+          "enabled": true
+        },
+        {
+          "url": "https://www.gercekgundem.com/rss/medya",
+          "category": "medya",
+          "provided_status": "terk edilmiş",
+          "provided_latest": "2026-08-03",
+          "enabled": false
+        }
+      ]
+    },
+    {
+      "id": "takvim",
+      "name": "Takvim",
+      "website": "https://www.takvim.com.tr",
+      "feeds": [
+        {
+          "url": "https://www.takvim.com.tr/rss/anasayfa.xml",
+          "category": "Homepage",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "id": "ahaber",
+      "name": "A Haber",
+      "website": "https://www.ahaber.com.tr",
+      "feeds": [
+        {
+          "url": "https://www.ahaber.com.tr/rss/gundem.xml",
+          "category": "gundem",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.ahaber.com.tr/rss/yazarlar.xml",
+          "category": "yazarlar",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.ahaber.com.tr/rss/dunya.xml",
+          "category": "dunya",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.ahaber.com.tr/rss/ekonomi.xml",
+          "category": "ekonomi",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.ahaber.com.tr/rss/saglik.xml",
+          "category": "saglik",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-01",
+          "enabled": true
+        },
+        {
+          "url": "https://www.ahaber.com.tr/rss/kultur-sanat.xml",
+          "category": null,
+          "provided_status": "yanıt yok — 403",
+          "provided_latest": null,
+          "enabled": false
+        }
+      ]
+    },
+    {
+      "id": "aydinlik",
+      "name": "Aydınlık",
+      "website": "https://www.aydinlik.com.tr",
+      "feeds": [
+        {
+          "url": "https://www.aydinlik.com.tr/rss",
+          "category": "main",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        },
+        {
+          "url": "multiple candidates tried (/rss.html, /rss/ekonomi, /rss/gundem, /rss-ekonomi, /kategori/ekonomi/rss.xml, /rss/ekonomi.xml, /ekonomi/rss, homepage link rel=alternate tags, sitemap.xml)",
+          "category": null,
+          "provided_status": "yanıt yok — no category-specific RSS feeds found; only the site-wide /rss main feed exists (already harvested as aydinlik__main.json)",
+          "provided_latest": null,
+          "enabled": false
+        }
+      ]
+    },
+    {
+      "id": "star",
+      "name": "Star",
+      "website": "https://www.star.com.tr",
+      "feeds": [
+        {
+          "url": "https://www.star.com.tr/rss/dunya.xml",
+          "category": "dunya",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.star.com.tr/rss/ekonomi.xml",
+          "category": "ekonomi",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.star.com.tr/rss/guncel.xml",
+          "category": "guncel (main)",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.star.com.tr/rss/spor.xml",
+          "category": "spor",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.star.com.tr/rss/saglik.xml",
+          "category": "saglik",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-06",
+          "enabled": true
+        },
+        {
+          "url": "https://www.star.com.tr/rss/kultur-sanat.xml",
+          "category": null,
+          "provided_status": "yanıt yok — 404",
+          "provided_latest": null,
+          "enabled": false
+        },
+        {
+          "url": "https://www.star.com.tr/rss/yazarlar.xml",
+          "category": "yazarlar",
+          "provided_status": "yanıt yok — empty feed (no items)",
+          "provided_latest": null,
+          "enabled": false
+        }
+      ]
+    },
+    {
+      "id": "tgrt",
+      "name": "TGRT Haber",
+      "website": "https://www.tgrthaber.com",
+      "feeds": []
+    },
+    {
+      "id": "dunya",
+      "name": "Dünya",
+      "website": "https://www.dunya.com",
+      "feeds": []
+    },
+    {
+      "id": "turkiyegz",
+      "name": "Türkiye Gazetesi",
+      "website": "https://www.turkiyegazetesi.com.tr",
+      "feeds": [
+        {
+          "url": "https://www.turkiyegazetesi.com.tr/rss",
+          "category": "main (mixed/all)",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-08",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "id": "oksijen",
+      "name": "Oksijen",
+      "website": "https://gazeteoksijen.com",
+      "feeds": []
+    },
+    {
+      "id": "f5haber",
+      "name": "F5Haber",
+      "website": "https://www.f5haber.com",
+      "feeds": []
+    },
+    {
+      "id": "haberler",
+      "name": "Haberler.com",
+      "website": "https://www.haberler.com",
+      "feeds": []
+    },
+    {
+      "id": "milligazete",
+      "name": "Milli Gazete",
+      "website": "https://www.milligazete.com.tr",
+      "feeds": [
+        {
+          "url": "https://www.milligazete.com.tr/rss",
+          "category": "main",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.milligazete.com.tr/rss/<category>.xml",
+          "category": null,
+          "provided_status": "yanıt yok — no_distinct_category_feeds_all_paths_under_/rss/_return_identical_content_to_main_feed_(verified_with_siyaset.xml,_yazarlar.xml,_and_a_nonexistent_test_path_all_returning_the_same_12_items_as_/rss)",
+          "provided_latest": null,
+          "enabled": false
+        }
+      ]
+    },
+    {
+      "id": "vatan",
+      "name": "Vatan",
+      "website": "https://www.gazetevatan.com",
+      "feeds": []
+    },
+    {
+      "id": "dirilis",
+      "name": "Diriliş Postası",
+      "website": "https://www.dirilispostasi.com",
+      "feeds": []
+    },
+    {
+      "id": "yeniasya",
+      "name": "Yeni Asya",
+      "website": "https://www.yeniasya.com.tr",
+      "feeds": []
+    },
+    {
+      "id": "artigercek",
+      "name": "Artı Gerçek",
+      "website": "https://artigercek.com",
+      "feeds": []
+    },
+    {
+      "id": "dha",
+      "name": "Demirören Haber Ajansı",
+      "website": "https://www.dha.com.tr",
+      "feeds": []
+    },
+    {
+      "id": "yenicag",
+      "name": "Yeni Çağ",
+      "website": "https://www.yenicaggazetesi.com",
+      "feeds": [
+        {
+          "url": "https://www.yenicaggazetesi.com/export/rss/dunya",
+          "category": "Dünya",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        },
+        {
+          "url": "https://www.yenicaggazetesi.com/export/rss",
+          "category": "Ana Sayfa (main)",
+          "provided_status": "canlı",
+          "provided_latest": "2026-09-07",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "id": "instacp",
+      "name": "Instacp",
+      "website": "https://www.instacp.com",
+      "feeds": []
+    },
+    {
+      "id": "gazetelerdebugun",
+      "name": "GazetelerdeBugün",
+      "website": "https://www.gazetelerdebugun.com",
+      "feeds": []
+    },
+    {
+      "id": "tele1",
+      "name": "TELE1",
+      "website": "https://www.tele1.com.tr",
+      "feeds": []
+    }
+  ]
+}
