@@ -1,9 +1,10 @@
 from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class Strict(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
 
 
 class Evidence(Strict):
@@ -21,9 +22,9 @@ class Claim(Strict):
 class Finding(Strict):
     id: str = Field(min_length=1, max_length=80)
     concept_id: str
-    layer: Literal['media_technique', 'cognitive_concept']
-    status: Literal['supported', 'candidate']
-    attribution: Literal['journalist', 'quoted_speaker', 'reported_actor', 'unclear']
+    layer: Literal["media_technique", "cognitive_concept"]
+    status: Literal["supported", "candidate"]
+    attribution: Literal["journalist", "quoted_speaker", "reported_actor", "unclear"]
     explanation_tr: str = Field(min_length=10, max_length=3000)
     alternative_explanation_tr: str = Field(min_length=5, max_length=2000)
     missing_context_tr: str = Field(max_length=2000)
@@ -36,7 +37,7 @@ class Difference(Claim):
 
 
 class Comparison(Strict):
-    schema_version: Literal['1.0'] = '1.0'
+    schema_version: Literal["1.0"] = "1.0"
     what_happened: list[Claim] = Field(min_length=1, max_length=8)
     agreements: list[Claim] = Field(max_length=12)
     differences: list[Difference] = Field(max_length=15)
@@ -50,8 +51,8 @@ class ArticleInput(Strict):
     source_name: str = Field(min_length=1, max_length=150)
     title: str = Field(min_length=4, max_length=500)
     text: str = Field(min_length=20, max_length=100000)
-    url: str = Field(default='', max_length=2000)
-    content_scope: Literal['full_text', 'feed_excerpt', 'provided_excerpt'] = 'provided_excerpt'
+    url: str = Field(default="", max_length=2000)
+    content_scope: Literal["full_text", "feed_excerpt", "provided_excerpt"] = "provided_excerpt"
 
 
 class EventInput(Strict):
@@ -61,7 +62,7 @@ class EventInput(Strict):
 
 class ReviewInput(Strict):
     finding_id: str = Field(min_length=1, max_length=80)
-    verdict: Literal['accept', 'reject', 'uncertain', 'correct', 'add']
+    verdict: Literal["accept", "reject", "uncertain", "correct", "add"]
     replacement: Finding | None = None
     notes: str = Field(min_length=10, max_length=4000)
 
@@ -72,7 +73,7 @@ class DecisionInput(Strict):
 
 
 class AnalyzeInput(Strict):
-    sensitivity: Literal['sensitive', 'balanced'] = 'sensitive'
+    sensitivity: Literal["sensitive", "balanced"] = "sensitive"
     force: bool = False
 
 

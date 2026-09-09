@@ -1,60 +1,574 @@
-'use strict';
+"use strict";
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
-const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const state = {token:'', config:{}, user:{}, page:'compare', events:[], event:null, taxonomy:[], sourceRegister:null, quotes:[], reviewFinding:null, decisionId:null};
-const labels = {accept:'Destekleniyor',reject:'Reddediliyor',uncertain:'Bağlam gerekli',correct:'Düzeltiliyor',add:'Kaçırılmış bulgu',journalist:'Gazeteci / başlık',quoted_speaker:'Alıntılanan konuşmacı',reported_actor:'Aktarılan kişi',unclear:'Atıf belirsiz'};
-const concept = id => state.taxonomy.find(c => c.id === id);
-const notify = (message, error = false) => {const e = $(error ? '#error' : '#notice'); e.textContent = message; e.hidden = false;};
+const esc = (v) =>
+  String(v ?? "").replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ],
+  );
+const state = {
+  token: "",
+  config: {},
+  user: {},
+  page: "compare",
+  events: [],
+  event: null,
+  taxonomy: [],
+  sourceRegister: null,
+  quotes: [],
+  reviewFinding: null,
+  decisionId: null,
+};
+const labels = {
+  accept: "Destekleniyor",
+  reject: "Reddediliyor",
+  uncertain: "Bağlam gerekli",
+  correct: "Düzeltiliyor",
+  add: "Kaçırılmış bulgu",
+  journalist: "Gazeteci / başlık",
+  quoted_speaker: "Alıntılanan konuşmacı",
+  reported_actor: "Aktarılan kişi",
+  unclear: "Atıf belirsiz",
+};
+const concept = (id) => state.taxonomy.find((c) => c.id === id);
+const notify = (message, error = false) => {
+  const e = $(error ? "#error" : "#notice");
+  e.textContent = message;
+  e.hidden = false;
+};
 async function api(path, options = {}) {
-  const response = await fetch('/api'+path,{...options,headers:{'Content-Type':'application/json',...(state.token?{'Authorization':'Bearer '+state.token}:{}),...options.headers}});
-  if (!response.ok) {let body;try{body=await response.json();}catch{body={};}const detail = typeof body.detail === 'string' ? body.detail : 'Alanları ve metin uzunluklarını kontrol edin.';throw new Error(detail);}
-  return response.headers.get('content-type')?.includes('json') ? response.json() : response.text();
+  const response = await fetch("/api" + path, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(state.token ? { Authorization: "Bearer " + state.token } : {}),
+      ...options.headers,
+    },
+  });
+  if (!response.ok) {
+    let body;
+    try {
+      body = await response.json();
+    } catch {
+      body = {};
+    }
+    const detail =
+      typeof body.detail === "string"
+        ? body.detail
+        : "Alanları ve metin uzunluklarını kontrol edin.";
+    throw new Error(detail);
+  }
+  return response.headers.get("content-type")?.includes("json")
+    ? response.json()
+    : response.text();
 }
-const post = (path, body={}) => api(path,{method:'POST',body:JSON.stringify(body)});
-async function busy(button, task) {const text=button.textContent;button.disabled=true;button.textContent='İşleniyor…';try{await task();}catch(e){notify(e.message,true);}finally{button.disabled=false;button.textContent=text;}}
-function heading(kicker,title,description,action='') {return `<div class="title-row"><div><div class="eyebrow">${esc(kicker)}</div><h1>${esc(title)}</h1><p class="intro">${esc(description)}</p></div>${action}</div>`;}
-function selector(){return `<div class="toolbar"><label>İncelenen olay<select id="event-select">${state.events.map(e=>`<option value="${esc(e.id)}" ${state.event?.id===e.id?'selected':''}>${esc(e.title)} · ${e.source_count} kaynak</option>`).join('')}</select></label><label>İnceleme derinliği<select id="sensitivity"><option value="sensitive">Hassas · adayları koru</option><option value="balanced">Yalnız destekli bulgular</option></select></label><button data-action="analyze">${state.event?.analysis?'Yeniden analiz et':'Analiz et'}</button></div>`;}
-function cite(evidence){const index=state.quotes.push(evidence)-1;return `<button class="cite" data-quote="${index}">↗ Kanıt · ${evidence.length}</button>`;}
-function claims(items){return items.length?items.map(c=>`<div class="claim"><p>${esc(c.text_tr)}</p>${cite(c.evidence)}</div>`).join(''):'<p class="muted">Bu metinlerle desteklenen bir sonuç kaydedilmedi.</p>';}
-function renderCompare(){
-  state.quotes=[];
-  let html=heading('KARŞILAŞTIRMALI OKUMA','Bir olay. Farklı çerçeveler.','Kaynakların ne söylediğini, neyi öne çıkardığını ve bunun sizin için neden önemli olduğunu birlikte inceleyin.','<button class="secondary" data-action="manual">+ Metin ekle</button>');
-  if(!state.event){$('#view').innerHTML=html+'<div class="empty"><h2>Henüz bir olay yok</h2><p>Kaynak ağından akışları toplayın veya karşılaştırılacak metinleri ekleyin.</p></div>';return;}
-  const ev=state.event, analysis=ev.analysis, p=analysis?.payload;
-  html+=selector();
-  if(ev.is_demo)html+='<div class="notice">KURGU DEMO · Aşağıdaki olay ve kaynaklar örnek amaçlıdır. Canlı model çalıştırılmadı.</div>';
-  if(ev.grouping==='lexical_candidate')html+='<div class="notice">Olay eşleştirmesi başlık benzerliğine dayanıyor. Aynı olay olduklarını kontrol edin; yanlış eşleşmeleri metin kartından taşıyın.</div>';
-  if(analysis?.stale)html+='<div class="error">Haberler veya olay eşleşmesi bu analizden sonra değişti. Aşağıdaki sonuçlar kayıtlı eski metinlere aittir; güncellemek için yeniden analiz edin.</div>';
-  html+=`<h2>${esc(ev.title)}</h2><div class="source-grid">${ev.articles.map(a=>`<article class="source-card"><div class="source-name">${esc(a.source_name)}</div><h3>${esc(a.title)}</h3><span class="pill">${a.content_scope==='full_text'?'Tam metin':'Özet / kısmi metin'}</span>${a.truncated?'<span class="pill candidate">Uzunluk sınırında kesildi</span>':''}<details><summary>Kaynak metnini oku</summary><pre>${esc(a.text)}</pre>${safeLink(a.url,'Kaynağa git')}<label>Başka olaya taşı<select class="move-target"><option value="">Olay seçin</option>${state.events.filter(e=>e.id!==ev.id).map(e=>`<option value="${esc(e.id)}">${esc(e.title)}</option>`).join('')}</select></label><button class="secondary" data-move="${esc(a.id)}">Taşı</button></details></article>`).join('')}</div>`;
-  if(!p){$('#view').innerHTML=html+'<div class="empty"><h2>Metinler hazır</h2><p>Kanıta dayalı karşılaştırma için analizi başlatın. Canlı modda model yapılandırması gerekir.</p></div>';return;}
-  html+=`<section class="panel"><div class="section-title"><span class="step">01</span><h2>Ne oldu?</h2></div>${claims(p.what_happened)}</section><div class="twocol"><section class="panel"><div class="section-title"><span class="step">02</span><h2>Nerede anlaşıyorlar?</h2></div>${claims(p.agreements)}</section><section class="panel"><div class="section-title"><span class="step">03</span><h2>Nerede ayrışıyorlar?</h2></div>${claims(p.differences)}</section></div>`;
-  const sources=[...new Map(analysis.snapshots.map(a=>[a.source_id,a.source_name])).entries()];
-  const concepts=[...new Set(p.findings.map(f=>f.concept_id))];
-  html+=`<section class="panel"><div class="section-title"><span class="step">04</span><h2>Farkı hangi çerçeveler kuruyor?</h2></div><p class="muted">Bir işarete dokunun: etiketten doğrudan alıntıya gidin. İşaretin yokluğu tarafsızlık kanıtı değildir.</p><div class="table-scroll"><table class="matrix"><thead><tr><th>Teknik / olası mekanizma</th>${sources.map(([,name])=>`<th>${esc(name)}</th>`).join('')}</tr></thead><tbody>${concepts.map(id=>`<tr><td>${esc(concept(id)?.name||id)}<br><small>${concept(id)?.layer==='media_technique'?'Metindeki teknik':'Olası bilişsel mekanizma'}</small></td>${sources.map(([sid])=>{const fs=p.findings.filter(f=>f.concept_id===id&&f.evidence.some(e=>analysis.snapshots.find(a=>a.id===e.article_id)?.source_id===sid));return `<td>${fs.length?fs.map(f=>`<button class="dot ${f.status}" data-finding="${esc(f.id)}" aria-label="${esc(concept(id)?.name)}: ${f.status==='candidate'?'aday':'destekli'}">${f.status==='candidate'?'?':'●'}</button>`).join(' '):'<span aria-label="Bulgu kaydedilmedi">—</span>'}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div><div class="legend"><span><i class="dot supported"></i>Metinsel destek</span><span><i class="dot candidate"></i>Aday · insan incelemesi</span></div><div class="finding-list">${p.findings.map(f=>`<article class="finding"><div><h3>${esc(concept(f.concept_id)?.name||f.concept_id)} <span class="pill ${f.status}">${f.status==='candidate'?'ADAY':'DESTEKLİ'}</span></h3><p>${esc(f.explanation_tr)}</p></div><div class="actions"><button class="secondary" data-finding="${esc(f.id)}">Kanıtı aç</button><button data-review="${esc(f.id)}">İncele</button></div></article>`).join('')}</div><div class="actions"><button class="secondary" data-action="add-finding">+ Kaçırılmış bulgu ekle</button></div></section><section class="panel impact"><div class="section-title"><span class="step">05</span><h2>Bu fark neden önemli?</h2></div><p>${esc(p.why_care_tr)}</p></section><details class="limitations" open><summary>Bu okumanın sınırları</summary><ul>${p.limitations_tr.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><p>Analiz: ${esc(analysis.id)} · ${esc(analysis.provenance.model||'Kurgu örnek')} · İnsan incelemesi özgün analizi değiştirmez.</p></details>`;
-  $('#view').innerHTML=html;
+const post = (path, body = {}) =>
+  api(path, { method: "POST", body: JSON.stringify(body) });
+async function busy(button, task) {
+  const text = button.textContent;
+  button.disabled = true;
+  button.textContent = "İşleniyor…";
+  try {
+    await task();
+  } catch (e) {
+    notify(e.message, true);
+  } finally {
+    button.disabled = false;
+    button.textContent = text;
+  }
 }
-function safeLink(url,label){try{if(new URL(url).protocol==='https:')return `<a class="row-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>`;}catch{}return '';}
-function showEvidence(items,finding=null){
-  const snapshots=state.event.analysis?.snapshots||state.event.articles;
-  $('#evidence-content').innerHTML=(finding?`<div class="eyebrow">BULGUNUN DAYANAĞI</div><h2>${esc(concept(finding.concept_id)?.name)}</h2><span class="pill ${finding.status}">${finding.status==='candidate'?'Aday · kanıt eksik':'Metinsel destek var'}</span><p>${esc(finding.explanation_tr)}</p><h3>Alternatif açıklama</h3><p>${esc(finding.alternative_explanation_tr)}</p><h3>İfade sahibi</h3><p>${esc(labels[finding.attribution])}</p>${finding.missing_context_tr?`<h3>Eksik bağlam</h3><p>${esc(finding.missing_context_tr)}</p>`:''}<h3>Okura olası etkisi</h3><p>${esc(finding.reader_impact_tr)}</p>`:'<h2>Kaynak kanıtları</h2>')+items.map(e=>{const a=snapshots.find(x=>x.id===e.article_id);return `<h3>${esc(a?.source_name)}</h3><blockquote>${esc(e.quote)}</blockquote><small>Metin konumu: ${e.start??'—'}–${e.end??'—'}</small><details><summary>Bağlamı gör</summary><p>${esc(a?.text)}</p></details>`;}).join('');$('#evidence-dialog').showModal();
+function heading(kicker, title, description, action = "") {
+  return `<div class="title-row"><div><div class="eyebrow">${esc(kicker)}</div><h1>${esc(title)}</h1><p class="intro">${esc(description)}</p></div>${action}</div>`;
 }
-function addQuote(value={}){const row=document.createElement('div');row.className='evidence-input';const articles=state.event.analysis.snapshots;row.innerHTML=`<label>Kaynak<select class="quote-article">${articles.map(a=>`<option value="${esc(a.id)}" ${a.id===value.article_id?'selected':''}>${esc(a.source_name)} · ${esc(a.title)}</option>`).join('')}</select></label><label>Birebir alıntı<textarea class="quote-text" rows="2">${esc(value.quote||'')}</textarea></label><button class="secondary" type="button" data-remove="quote">Alıntıyı kaldır</button>`;$('#evidence-inputs').append(row);}
-function openReview(id){if(!state.event?.analysis){notify('Önce bir analiz gerekli.',true);return;}const f=state.event.analysis.payload.findings.find(x=>x.id===id);state.reviewFinding=f||null;$('#review-form').reset();$('#review-error').hidden=true;$('#review-title').textContent=f?'Bulguyu incele':'Kaçırılmış bulgu ekle';$('#verdict').value=f?'accept':'add';$$('#verdict option').forEach(o=>{o.disabled=f?o.value==='add':o.value!=='add';});$('#concept').innerHTML=state.taxonomy.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');$('#concept').value=f?.concept_id||'loaded_language';$('#finding-status').value=f?.status||'candidate';$('#attribution').value=f?.attribution||'unclear';for(const [id,key] of [['explanation','explanation_tr'],['alternative','alternative_explanation_tr'],['missing','missing_context_tr'],['impact','reader_impact_tr']])$('#'+id).value=f?.[key]||'';$('#evidence-inputs').innerHTML='';(f?.evidence||[{}]).forEach(addQuote);$('#replacement').hidden=!!f;$('#review-dialog').showModal();}
-async function renderReviews(){let html=heading('İNSAN İNCELEMESİ','İnceleme masası','Model bulgularını değerlendirin, kaçırılan işaretleri ekleyin ve farklı bir editörün kararıyla eğitim kayıtlarını oluşturun.','<button class="secondary" data-action="export">JSONL dışa aktar</button>');if(!state.event?.analysis){$('#view').innerHTML=html+'<div class="empty">Önce analiz edilmiş bir olay seçin.</div>';return;}html+=selector();const data=await api(`/analyses/${state.event.analysis.id}/reviews`);html+=`<p class="muted">${data.reviews.length} inceleme · ${data.decisions.length} editör kararı. Kurgu ve kararsız kayıtlar eğitim çıktısına alınmaz.</p><button data-action="add-finding">+ Kaçırılmış bulgu</button>`;if(!data.reviews.length)html+='<div class="empty">Henüz inceleme yok. Karşılaştırmadaki bir bulgunun “İncele” düğmesiyle başlayın.</div>';html+=data.reviews.map(r=>{const decisions=data.decisions.filter(d=>d.review_id===r.id);return `<article class="review-item"><span class="pill">${esc(labels[r.payload.verdict])}</span><h3>${esc(r.payload.finding_id)} · ${esc(r.reviewer)}</h3><blockquote>${esc(r.payload.notes)}</blockquote>${r.payload.replacement?`<p>${esc(r.payload.replacement.explanation_tr)}</p>`:''}<small>${esc(r.created_at)}</small>${decisions.map(d=>`<p class="notice">${esc(d.editor)} onayladı: ${esc(d.notes)}</p>`).join('')}${state.user.role==='editor'&&r.reviewer!==state.user.id?`<div class="actions"><button data-decision="${esc(r.id)}">Editör kararı ver</button></div>`:'<p class="muted">Onay için incelemeyi yapan kişiden farklı bir editör gerekli.</p>'}</article>`;}).join('');$('#view').innerHTML=html;}
-async function renderSources(){const r=await api('/sources');state.sourceRegister=r;const feeds=r.sources.flatMap(s=>s.feeds),active=r.sources.filter(s=>s.feeds.some(f=>f.selected));$('#view').innerHTML=heading('KAYNAK AĞI','Haberin geldiği yerler','Kaynak kimliği bir yanlılık etiketi değildir. Akışın teknik durumu, haberin güvenilirliğini veya siyasi konumunu ölçmez.','<button data-action="collect">Akışları şimdi kontrol et</button>')+`<div class="stats"><div class="stat"><strong>${r.sources.length}</strong><small>Kayıtlı yayıncı</small></div><div class="stat"><strong>${active.length}</strong><small>Toplama için seçili yayıncı</small></div><div class="stat"><strong>${feeds.filter(f=>f.selected).length} / ${feeds.length}</strong><small>Seçili / kayıtlı akış</small></div></div><p class="muted">Sağlanan listenin tarihi: ${esc(r.observed_at)}. “Canlı” etiketi güncel erişim garantisi değildir; aşağıda son çalışma sonucu ayrıca gösterilir.</p><div class="panel table-scroll"><table><thead><tr><th>Yayıncı</th><th>Seçili akış</th><th>Akışlar ve son kontrol</th></tr></thead><tbody>${r.sources.map(s=>`<tr><td><strong>${esc(s.name)}</strong><br>${safeLink(s.website,'Yayıncı sitesi')}</td><td>${s.feeds.filter(f=>f.selected).length} / ${s.feeds.length}</td><td><details><summary>${s.feeds.length?'Akış ayrıntıları':'Kayıtlı akış yok'}</summary>${s.feeds.map(f=>`<p>${safeLink(f.url,f.category)}<br><small>Listede: ${esc(f.provided_status)} · ${f.selected?'Seçili':'Devre dışı'}<br>Son kontrol: ${esc(f.runtime?.checked_at||'Henüz yapılmadı')}<br>Sonuç: ${esc(f.runtime?.status||'Ölçülmedi')} ${f.runtime?.http_status?'· HTTP '+esc(f.runtime.http_status):''}${f.runtime?.error?' · '+esc(f.runtime.error):''}</small></p>`).join('')}</details></td></tr>`).join('')}</tbody></table></div>`;}
-function renderMethod(){const q=($('#concept-search')?.value||'').toLocaleLowerCase('tr');$('#view').innerHTML=heading('KAVRAMLAR VE YÖNTEM','Etiketten önce kanıt.','116 bilişsel kavram, 6 medya tekniği. Referans örnekleri sentetiktir; uzmanlarca onaylanmış Türkçe eğitim verisi yerine geçmez.')+`<div class="panel"><h2>Nasıl okuyoruz?</h2><p>Önce aynı olayın metinleri karşılaştırılır. Model açıklama ve birebir kanıt üretir; ikinci model geçişi taslağı denetler. Kod alıntıların metinde bulunduğunu doğrular. Bu kontrol, yorumun doğru olduğunu tek başına kanıtlamaz.</p><p><strong>Destekli:</strong> metin tekniği destekliyor. <strong>Aday:</strong> ince bir işaret var, fakat ek bağlam veya insan incelemesi gerekiyor. Yazarın niyeti veya okurun gerçek zihinsel tepkisi metinden kesinleştirilemez.</p><p>CheckList yaklaşımıyla asgari işlev, değişmezlik ve yön testleri kullanılır. Model başarısı ayrıca bağımsız etiketlenmiş Türkçe haberlerde ölçülmelidir.</p><p>${safeLink('https://arxiv.org/abs/2005.04118','CheckList araştırması')} · ${safeLink('https://thedecisionlab.com/biases','The Decision Lab kavram dizini')}</p></div><label>Kavram ara<input id="concept-search" placeholder="Örnek: framing, confirmation, nedensellik" value="${esc(q)}"></label><p class="muted">Bilişsel kavram referansı ve örnekleri İngilizce; altı haber tekniği Türkçe. Haber analizleri ve inceleme gerekçeleri Türkçedir.</p><div id="glossary" class="glossary"></div>`;renderGlossary(q);}
-function renderGlossary(q=''){$('#glossary').innerHTML=state.taxonomy.filter(c=>(c.name+' '+c.id+' '+c.operational_definition).toLocaleLowerCase('tr').includes(q)).map(c=>`<article><span class="pill">${c.layer==='media_technique'?'MEDYA TEKNİĞİ':'BİLİŞSEL KAVRAM'}</span><h3>${esc(c.name)}</h3><p>${esc(c.operational_definition)}</p><details><summary>Örnek ve sınır</summary><p><strong>Hedef işaret:</strong> ${esc(c.positive_example)}</p><p><strong>Karşı örnek:</strong> ${esc(c.target_negative_example)}</p><p>${esc(c.annotation_boundary)}</p>${safeLink(c.source_url,'Kavram kaynağı')}</details></article>`).join('');}
-async function render(){try{$$('.nav').forEach(b=>b.classList.toggle('active',b.dataset.page===state.page));if(state.page==='compare')renderCompare();else if(state.page==='reviews')await renderReviews();else if(state.page==='sources')await renderSources();else renderMethod();}catch(e){notify(e.message,true);}}
-async function loadEvents(id){state.events=await api('/events');const selected=id||state.event?.id||state.events[0]?.id;state.event=selected&&state.events.some(e=>e.id===selected)?await api('/events/'+selected):null;}
-function addArticle(){const row=document.createElement('fieldset');row.className='manual-article';row.innerHTML=`<legend>Kaynak ${$$('.manual-article').length+1}</legend><label>Yayıncı adı<input class="manual-source" required maxlength="150"></label><label>Başlık<input class="manual-title" required minlength="4" maxlength="500"></label><label>Metin<textarea class="manual-text" required minlength="20" maxlength="100000" rows="5"></textarea></label><label>Kapsam<select class="manual-scope"><option value="provided_excerpt">Kısmi metin / alıntı</option><option value="full_text">Tam haber metni</option></select></label><label>Kaynak URL (isteğe bağlı)<input class="manual-url" type="url" placeholder="https://"></label><button type="button" class="secondary" data-remove="article">Kaynağı kaldır</button>`;$('#manual-articles').append(row);}
-async function initialize(){state.config=await api('/config');$('#mode').textContent=state.config.mode==='demo'?'KURGU DEMO':'CANLI ÇALIŞMA';$('#mode').classList.toggle('demo',state.config.mode==='demo');if(state.config.auth_required&&!state.token){$('#view').innerHTML='<div class="empty"><h1>Çalışma alanınız hazır</h1><p>Haberleri ve incelemeleri görmek için erişim anahtarınızı girin.</p><button data-action="auth">Giriş yap</button></div>';$('#auth').showModal();return;}state.user=await api('/me');$('#identity').textContent=state.user.id;state.taxonomy=(await api('/taxonomy')).entries;await loadEvents();await render();}
-document.addEventListener('click',async event=>{const b=event.target.closest('button');if(!b)return;if(b.dataset.close){$('#'+b.dataset.close).close();return;}if(b.dataset.page){state.page=b.dataset.page;await render();return;}if(b.dataset.remove){b.closest(b.dataset.remove==='quote'?'.evidence-input':'.manual-article').remove();return;}if(b.dataset.quote!==undefined){showEvidence(state.quotes[Number(b.dataset.quote)]);return;}if(b.dataset.finding){const f=state.event.analysis.payload.findings.find(f=>f.id===b.dataset.finding);showEvidence(f.evidence,f);return;}if(b.dataset.review){openReview(b.dataset.review);return;}if(b.dataset.decision){state.decisionId=b.dataset.decision;$('#decision-form').reset();$('#decision-error').hidden=true;$('#decision-dialog').showModal();return;}if(b.dataset.move){await busy(b,async()=>{const target=$('.move-target',b.parentElement).value;if(!target)throw new Error('Hedef olay seçin.');await post('/articles/'+b.dataset.move+'/move',{event_id:target});await loadEvents();await render();});return;}const action=b.dataset.action;if(action==='auth')$('#auth').showModal();if(action==='manual'){$('#manual-form').reset();$('#manual-articles').innerHTML='';addArticle();addArticle();$('#manual-error').hidden=true;$('#manual-dialog').showModal();}if(action==='add-finding')openReview();if(action==='analyze')await busy(b,async()=>{const sensitivity=$('#sensitivity').value;await post('/events/'+state.event.id+'/analyze',{sensitivity,force:true});await loadEvents();await render();notify(state.config.mode==='demo'?'Kurgu örnek gösteriliyor; canlı model çalıştırılmadı.':'Kanıtları doğrulanan analiz kaydedildi.');});if(action==='collect')await busy(b,async()=>{const r=await post('/collect');notify(`${r.feeds.length} akış kontrol edildi. Başarısız kontroller kaynak tablosunda gösterilir.`);await loadEvents();await renderSources();});if(action==='export')await busy(b,async()=>{const response=await fetch('/api/export',{headers:state.token?{'Authorization':'Bearer '+state.token}:{}});if(!response.ok)throw new Error('Dışa aktarma için editör erişimi gerekli.');const text=await response.text();if(!text.trim()){notify('Dışa aktarılacak onaylı gerçek haber kaydı yok.');return;}const url=URL.createObjectURL(new Blob([text],{type:'application/x-ndjson'}));const a=document.createElement('a');a.href=url;a.download='reviewed_annotations.jsonl';a.click();URL.revokeObjectURL(url);});});
-document.addEventListener('change',async e=>{if(e.target.id==='event-select'){await loadEvents(e.target.value);await render();}if(e.target.id==='verdict')$('#replacement').hidden=!['correct','add'].includes(e.target.value);});
-document.addEventListener('input',e=>{if(e.target.id==='concept-search')renderGlossary(e.target.value.toLocaleLowerCase('tr'));});
-$('#auth-open').onclick=()=>$('#auth').showModal();$('#add-quote').onclick=()=>addQuote();$('#add-article').onclick=()=>{if($$('.manual-article').length<25)addArticle();};
-$('#auth-form').onsubmit=async e=>{e.preventDefault();state.token=$('#token').value.trim();$('#auth').close();$('#token').value='';await initialize().catch(e=>notify(e.message,true));};
-$('#review-form').onsubmit=async e=>{e.preventDefault();const button=$('button[type=submit]',e.target);button.disabled=true;try{const verdict=$('#verdict').value;const id=state.reviewFinding?.id||'human-'+crypto.randomUUID();const replacement=['correct','add'].includes(verdict)?{id,concept_id:$('#concept').value,layer:concept($('#concept').value).layer,status:$('#finding-status').value,attribution:$('#attribution').value,explanation_tr:$('#explanation').value,alternative_explanation_tr:$('#alternative').value,missing_context_tr:$('#missing').value,reader_impact_tr:$('#impact').value,evidence:$$('.evidence-input').map(r=>({article_id:$('.quote-article',r).value,quote:$('.quote-text',r).value}))}:null;await post(`/analyses/${state.event.analysis.id}/reviews`,{finding_id:id,verdict,replacement,notes:$('#review-notes').value});$('#review-dialog').close();notify('İnceleme kaydedildi. Eğitim çıktısı için farklı bir editörün kararı gerekir.');if(state.page==='reviews')await render();}catch(error){$('#review-error').textContent=error.message;$('#review-error').hidden=false;}finally{button.disabled=false;}};
-$('#decision-form').onsubmit=async e=>{e.preventDefault();const b=$('button[type=submit]',e.target);b.disabled=true;try{await post(`/analyses/${state.event.analysis.id}/decisions`,{review_id:state.decisionId,notes:$('#decision-notes').value});$('#decision-dialog').close();await render();notify('Editör kararı kaydedildi.');}catch(error){$('#decision-error').textContent=error.message;$('#decision-error').hidden=false;}finally{b.disabled=false;}};
-$('#manual-form').onsubmit=async e=>{e.preventDefault();const b=$('button[type=submit]',e.target);b.disabled=true;try{const articles=$$('.manual-article').map(r=>({source_id:$('.manual-source',r).value.trim().toLocaleLowerCase('tr'),source_name:$('.manual-source',r).value.trim(),title:$('.manual-title',r).value,text:$('.manual-text',r).value,url:$('.manual-url',r).value,content_scope:$('.manual-scope',r).value}));const result=await post('/events',{title:$('#event-title').value,articles});$('#manual-dialog').close();await loadEvents(result.id);state.page='compare';await render();}catch(error){$('#manual-error').textContent=error.message;$('#manual-error').hidden=false;}finally{b.disabled=false;}};
-initialize().catch(e=>notify(e.message,true));
+function selector() {
+  return `<div class="toolbar"><label>İncelenen olay<select id="event-select">${state.events.map((e) => `<option value="${esc(e.id)}" ${state.event?.id === e.id ? "selected" : ""}>${esc(e.title)} · ${e.source_count} kaynak</option>`).join("")}</select></label><label>İnceleme derinliği<select id="sensitivity"><option value="sensitive">Hassas · adayları koru</option><option value="balanced">Yalnız destekli bulgular</option></select></label><button data-action="analyze">${state.event?.analysis ? "Yeniden analiz et" : "Analiz et"}</button></div>`;
+}
+function cite(evidence) {
+  const index = state.quotes.push(evidence) - 1;
+  return `<button class="cite" data-quote="${index}">↗ Kanıt · ${evidence.length}</button>`;
+}
+function claims(items) {
+  return items.length
+    ? items
+        .map(
+          (c) =>
+            `<div class="claim"><p>${esc(c.text_tr)}</p>${cite(c.evidence)}</div>`,
+        )
+        .join("")
+    : '<p class="muted">Bu metinlerle desteklenen bir sonuç kaydedilmedi.</p>';
+}
+function renderCompare() {
+  state.quotes = [];
+  let html = heading(
+    "KARŞILAŞTIRMALI OKUMA",
+    "Bir olay. Farklı çerçeveler.",
+    "Kaynakların ne söylediğini, neyi öne çıkardığını ve bunun sizin için neden önemli olduğunu birlikte inceleyin.",
+    '<button class="secondary" data-action="manual">+ Metin ekle</button>',
+  );
+  if (!state.event) {
+    $("#view").innerHTML =
+      html +
+      '<div class="empty"><h2>Henüz bir olay yok</h2><p>Kaynak ağından akışları toplayın veya karşılaştırılacak metinleri ekleyin.</p></div>';
+    return;
+  }
+  const ev = state.event,
+    analysis = ev.analysis,
+    p = analysis?.payload;
+  html += selector();
+  if (ev.is_demo)
+    html +=
+      '<div class="notice">KURGU DEMO · Aşağıdaki olay ve kaynaklar örnek amaçlıdır. Canlı model çalıştırılmadı.</div>';
+  if (ev.grouping === "lexical_candidate")
+    html +=
+      '<div class="notice">Olay eşleştirmesi başlık benzerliğine dayanıyor. Aynı olay olduklarını kontrol edin; yanlış eşleşmeleri metin kartından taşıyın.</div>';
+  if (analysis?.stale)
+    html +=
+      '<div class="error">Haberler veya olay eşleşmesi bu analizden sonra değişti. Aşağıdaki sonuçlar kayıtlı eski metinlere aittir; güncellemek için yeniden analiz edin.</div>';
+  html += `<h2>${esc(ev.title)}</h2><div class="source-grid">${ev.articles
+    .map(
+      (a) =>
+        `<article class="source-card"><div class="source-name">${esc(a.source_name)}</div><h3>${esc(a.title)}</h3><span class="pill">${a.content_scope === "full_text" ? "Tam metin" : "Özet / kısmi metin"}</span>${a.truncated ? '<span class="pill candidate">Uzunluk sınırında kesildi</span>' : ""}<details><summary>Kaynak metnini oku</summary><pre>${esc(a.text)}</pre>${safeLink(a.url, "Kaynağa git")}<label>Başka olaya taşı<select class="move-target"><option value="">Olay seçin</option>${state.events
+          .filter((e) => e.id !== ev.id)
+          .map((e) => `<option value="${esc(e.id)}">${esc(e.title)}</option>`)
+          .join(
+            "",
+          )}</select></label><button class="secondary" data-move="${esc(a.id)}">Taşı</button></details></article>`,
+    )
+    .join("")}</div>`;
+  if (!p) {
+    $("#view").innerHTML =
+      html +
+      '<div class="empty"><h2>Metinler hazır</h2><p>Kanıta dayalı karşılaştırma için analizi başlatın. Canlı modda model yapılandırması gerekir.</p></div>';
+    return;
+  }
+  html += `<section class="panel"><div class="section-title"><span class="step">01</span><h2>Ne oldu?</h2></div>${claims(p.what_happened)}</section><div class="twocol"><section class="panel"><div class="section-title"><span class="step">02</span><h2>Nerede anlaşıyorlar?</h2></div>${claims(p.agreements)}</section><section class="panel"><div class="section-title"><span class="step">03</span><h2>Nerede ayrışıyorlar?</h2></div>${claims(p.differences)}</section></div>`;
+  const sources = [
+    ...new Map(
+      analysis.snapshots.map((a) => [a.source_id, a.source_name]),
+    ).entries(),
+  ];
+  const concepts = [...new Set(p.findings.map((f) => f.concept_id))];
+  html += `<section class="panel"><div class="section-title"><span class="step">04</span><h2>Farkı hangi çerçeveler kuruyor?</h2></div><p class="muted">Bir işarete dokunun: etiketten doğrudan alıntıya gidin. İşaretin yokluğu tarafsızlık kanıtı değildir.</p><div class="table-scroll"><table class="matrix"><thead><tr><th>Teknik / olası mekanizma</th>${sources.map(([, name]) => `<th>${esc(name)}</th>`).join("")}</tr></thead><tbody>${concepts
+    .map(
+      (id) =>
+        `<tr><td>${esc(concept(id)?.name || id)}<br><small>${concept(id)?.layer === "media_technique" ? "Metindeki teknik" : "Olası bilişsel mekanizma"}</small></td>${sources
+          .map(([sid]) => {
+            const fs = p.findings.filter(
+              (f) =>
+                f.concept_id === id &&
+                f.evidence.some(
+                  (e) =>
+                    analysis.snapshots.find((a) => a.id === e.article_id)
+                      ?.source_id === sid,
+                ),
+            );
+            return `<td>${fs.length ? fs.map((f) => `<button class="dot ${f.status}" data-finding="${esc(f.id)}" aria-label="${esc(concept(id)?.name)}: ${f.status === "candidate" ? "aday" : "destekli"}">${f.status === "candidate" ? "?" : "●"}</button>`).join(" ") : '<span aria-label="Bulgu kaydedilmedi">—</span>'}</td>`;
+          })
+          .join("")}</tr>`,
+    )
+    .join(
+      "",
+    )}</tbody></table></div><div class="legend"><span><i class="dot supported"></i>Metinsel destek</span><span><i class="dot candidate"></i>Aday · insan incelemesi</span></div><div class="finding-list">${p.findings.map((f) => `<article class="finding"><div><h3>${esc(concept(f.concept_id)?.name || f.concept_id)} <span class="pill ${f.status}">${f.status === "candidate" ? "ADAY" : "DESTEKLİ"}</span></h3><p>${esc(f.explanation_tr)}</p></div><div class="actions"><button class="secondary" data-finding="${esc(f.id)}">Kanıtı aç</button><button data-review="${esc(f.id)}">İncele</button></div></article>`).join("")}</div><div class="actions"><button class="secondary" data-action="add-finding">+ Kaçırılmış bulgu ekle</button></div></section><section class="panel impact"><div class="section-title"><span class="step">05</span><h2>Bu fark neden önemli?</h2></div><p>${esc(p.why_care_tr)}</p></section><details class="limitations" open><summary>Bu okumanın sınırları</summary><ul>${p.limitations_tr.map((x) => `<li>${esc(x)}</li>`).join("")}</ul><p>Analiz: ${esc(analysis.id)} · ${esc(analysis.provenance.model || "Kurgu örnek")} · İnsan incelemesi özgün analizi değiştirmez.</p></details>`;
+  $("#view").innerHTML = html;
+}
+function safeLink(url, label) {
+  try {
+    if (new URL(url).protocol === "https:")
+      return `<a class="row-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>`;
+  } catch {}
+  return "";
+}
+function showEvidence(items, finding = null) {
+  const snapshots = state.event.analysis?.snapshots || state.event.articles;
+  $("#evidence-content").innerHTML =
+    (finding
+      ? `<div class="eyebrow">BULGUNUN DAYANAĞI</div><h2>${esc(concept(finding.concept_id)?.name)}</h2><span class="pill ${finding.status}">${finding.status === "candidate" ? "Aday · kanıt eksik" : "Metinsel destek var"}</span><p>${esc(finding.explanation_tr)}</p><h3>Alternatif açıklama</h3><p>${esc(finding.alternative_explanation_tr)}</p><h3>İfade sahibi</h3><p>${esc(labels[finding.attribution])}</p>${finding.missing_context_tr ? `<h3>Eksik bağlam</h3><p>${esc(finding.missing_context_tr)}</p>` : ""}<h3>Okura olası etkisi</h3><p>${esc(finding.reader_impact_tr)}</p>`
+      : "<h2>Kaynak kanıtları</h2>") +
+    items
+      .map((e) => {
+        const a = snapshots.find((x) => x.id === e.article_id);
+        return `<h3>${esc(a?.source_name)}</h3><blockquote>${esc(e.quote)}</blockquote><small>Metin konumu: ${e.start ?? "—"}–${e.end ?? "—"}</small><details><summary>Bağlamı gör</summary><p>${esc(a?.text)}</p></details>`;
+      })
+      .join("");
+  $("#evidence-dialog").showModal();
+}
+function addQuote(value = {}) {
+  const row = document.createElement("div");
+  row.className = "evidence-input";
+  const articles = state.event.analysis.snapshots;
+  row.innerHTML = `<label>Kaynak<select class="quote-article">${articles.map((a) => `<option value="${esc(a.id)}" ${a.id === value.article_id ? "selected" : ""}>${esc(a.source_name)} · ${esc(a.title)}</option>`).join("")}</select></label><label>Birebir alıntı<textarea class="quote-text" rows="2">${esc(value.quote || "")}</textarea></label><button class="secondary" type="button" data-remove="quote">Alıntıyı kaldır</button>`;
+  $("#evidence-inputs").append(row);
+}
+function openReview(id) {
+  if (!state.event?.analysis) {
+    notify("Önce bir analiz gerekli.", true);
+    return;
+  }
+  const f = state.event.analysis.payload.findings.find((x) => x.id === id);
+  state.reviewFinding = f || null;
+  $("#review-form").reset();
+  $("#review-error").hidden = true;
+  $("#review-title").textContent = f
+    ? "Bulguyu incele"
+    : "Kaçırılmış bulgu ekle";
+  $("#verdict").value = f ? "accept" : "add";
+  $$("#verdict option").forEach((o) => {
+    o.disabled = f ? o.value === "add" : o.value !== "add";
+  });
+  $("#concept").innerHTML = state.taxonomy
+    .map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`)
+    .join("");
+  $("#concept").value = f?.concept_id || "loaded_language";
+  $("#finding-status").value = f?.status || "candidate";
+  $("#attribution").value = f?.attribution || "unclear";
+  for (const [id, key] of [
+    ["explanation", "explanation_tr"],
+    ["alternative", "alternative_explanation_tr"],
+    ["missing", "missing_context_tr"],
+    ["impact", "reader_impact_tr"],
+  ])
+    $("#" + id).value = f?.[key] || "";
+  $("#evidence-inputs").innerHTML = "";
+  (f?.evidence || [{}]).forEach(addQuote);
+  $("#replacement").hidden = !!f;
+  $("#review-dialog").showModal();
+}
+async function renderReviews() {
+  let html = heading(
+    "İNSAN İNCELEMESİ",
+    "İnceleme masası",
+    "Model bulgularını değerlendirin, kaçırılan işaretleri ekleyin ve farklı bir editörün kararıyla eğitim kayıtlarını oluşturun.",
+    '<button class="secondary" data-action="export">JSONL dışa aktar</button>',
+  );
+  if (!state.event?.analysis) {
+    $("#view").innerHTML =
+      html + '<div class="empty">Önce analiz edilmiş bir olay seçin.</div>';
+    return;
+  }
+  html += selector();
+  const data = await api(`/analyses/${state.event.analysis.id}/reviews`);
+  state.reviewRows = data.reviews;
+  html += `<p class="muted">${data.reviews.length} inceleme · ${data.decisions.length} editör kararı. Kurgu ve kararsız kayıtlar eğitim çıktısına alınmaz.</p><button data-action="add-finding">+ Kaçırılmış bulgu</button>`;
+  if (!data.reviews.length)
+    html +=
+      '<div class="empty">Henüz inceleme yok. Karşılaştırmadaki bir bulgunun “İncele” düğmesiyle başlayın.</div>';
+  html += data.reviews
+    .map((r) => {
+      const decisions = data.decisions.filter((d) => d.review_id === r.id);
+      return `<article class="review-item"><span class="pill">${esc(labels[r.payload.verdict])}</span><h3>${esc(r.payload.finding_id)} · ${esc(r.reviewer)}</h3><blockquote>${esc(r.payload.notes)}</blockquote>${r.payload.replacement ? `<p>${esc(r.payload.replacement.explanation_tr)}</p><button class="secondary" data-review-proof="${esc(r.id)}">Düzeltilmiş kanıtı gör</button>` : ""}<small>${esc(r.created_at)}</small>${decisions.map((d) => `<p class="notice">${esc(d.editor)} onayladı: ${esc(d.notes)}</p>`).join("")}${state.user.role === "editor" && r.reviewer !== state.user.id ? `<div class="actions"><button data-decision="${esc(r.id)}">Editör kararı ver</button></div>` : '<p class="muted">Onay için incelemeyi yapan kişiden farklı bir editör gerekli.</p>'}</article>`;
+    })
+    .join("");
+  $("#view").innerHTML = html;
+}
+async function renderSources() {
+  const r = await api("/sources");
+  state.sourceRegister = r;
+  const feeds = r.sources.flatMap((s) => s.feeds),
+    active = r.sources.filter((s) => s.feeds.some((f) => f.selected));
+  $("#view").innerHTML =
+    heading(
+      "KAYNAK AĞI",
+      "Haberin geldiği yerler",
+      "Kaynak kimliği bir yanlılık etiketi değildir. Akışın teknik durumu, haberin güvenilirliğini veya siyasi konumunu ölçmez.",
+      '<button data-action="collect">Akışları şimdi kontrol et</button>',
+    ) +
+    `<div class="stats"><div class="stat"><strong>${r.sources.length}</strong><small>Kayıtlı yayıncı</small></div><div class="stat"><strong>${active.length}</strong><small>Toplama için seçili yayıncı</small></div><div class="stat"><strong>${feeds.filter((f) => f.selected).length} / ${feeds.length}</strong><small>Seçili / kayıtlı akış</small></div></div><p class="muted">Sağlanan listenin tarihi: ${esc(r.observed_at)}. “Canlı” etiketi güncel erişim garantisi değildir; aşağıda son çalışma sonucu ayrıca gösterilir.</p><div class="panel table-scroll"><table><thead><tr><th>Yayıncı</th><th>Seçili akış</th><th>Akışlar ve son kontrol</th></tr></thead><tbody>${r.sources.map((s) => `<tr><td><strong>${esc(s.name)}</strong><br>${safeLink(s.website, "Yayıncı sitesi")}</td><td>${s.feeds.filter((f) => f.selected).length} / ${s.feeds.length}</td><td><details><summary>${s.feeds.length ? "Akış ayrıntıları" : "Kayıtlı akış yok"}</summary>${s.feeds.map((f) => `<p>${safeLink(f.url, f.category)}<br><small>Listede: ${esc(f.provided_status)} · ${f.selected ? "Seçili" : "Devre dışı"}<br>Son kontrol: ${esc(f.runtime?.checked_at || "Henüz yapılmadı")}<br>Sonuç: ${esc(f.runtime?.status || "Ölçülmedi")} ${f.runtime?.http_status ? "· HTTP " + esc(f.runtime.http_status) : ""}${f.runtime?.error ? " · " + esc(f.runtime.error) : ""}</small></p>`).join("")}</details></td></tr>`).join("")}</tbody></table></div>`;
+}
+function renderMethod() {
+  const q = ($("#concept-search")?.value || "").toLocaleLowerCase("tr");
+  $("#view").innerHTML =
+    heading(
+      "KAVRAMLAR VE YÖNTEM",
+      "Etiketten önce kanıt.",
+      "116 bilişsel kavram, 6 medya tekniği. Referans örnekleri sentetiktir; uzmanlarca onaylanmış Türkçe eğitim verisi yerine geçmez.",
+    ) +
+    `<div class="panel"><h2>Nasıl okuyoruz?</h2><p>Önce aynı olayın metinleri karşılaştırılır. Model açıklama ve birebir kanıt üretir; ikinci model geçişi taslağı denetler. Kod alıntıların metinde bulunduğunu doğrular. Bu kontrol, yorumun doğru olduğunu tek başına kanıtlamaz.</p><p><strong>Destekli:</strong> metin tekniği destekliyor. <strong>Aday:</strong> ince bir işaret var, fakat ek bağlam veya insan incelemesi gerekiyor. Yazarın niyeti veya okurun gerçek zihinsel tepkisi metinden kesinleştirilemez.</p><p>CheckList yaklaşımıyla asgari işlev, değişmezlik ve yön testleri kullanılır. Model başarısı ayrıca bağımsız etiketlenmiş Türkçe haberlerde ölçülmelidir.</p><p>${safeLink("https://arxiv.org/abs/2005.04118", "CheckList araştırması")} · ${safeLink("https://thedecisionlab.com/biases", "The Decision Lab kavram dizini")}</p></div><label>Kavram ara<input id="concept-search" placeholder="Örnek: framing, confirmation, nedensellik" value="${esc(q)}"></label><p class="muted">Bilişsel kavram referansı ve örnekleri İngilizce; altı haber tekniği Türkçe. Haber analizleri ve inceleme gerekçeleri Türkçedir.</p><div id="glossary" class="glossary"></div>`;
+  renderGlossary(q);
+}
+function renderGlossary(q = "") {
+  $("#glossary").innerHTML = state.taxonomy
+    .filter((c) =>
+      (c.name + " " + c.id + " " + c.operational_definition)
+        .toLocaleLowerCase("tr")
+        .includes(q),
+    )
+    .map(
+      (c) =>
+        `<article><span class="pill">${c.layer === "media_technique" ? "MEDYA TEKNİĞİ" : "BİLİŞSEL KAVRAM"}</span><h3>${esc(c.name)}</h3><p>${esc(c.operational_definition)}</p><details><summary>Örnek ve sınır</summary><p><strong>Hedef işaret:</strong> ${esc(c.positive_example)}</p><p><strong>Karşı örnek:</strong> ${esc(c.target_negative_example)}</p><p>${esc(c.annotation_boundary)}</p>${safeLink(c.source_url, "Kavram kaynağı")}</details></article>`,
+    )
+    .join("");
+}
+async function render() {
+  try {
+    $$(".nav").forEach((b) =>
+      b.classList.toggle("active", b.dataset.page === state.page),
+    );
+    if (state.page === "compare") renderCompare();
+    else if (state.page === "reviews") await renderReviews();
+    else if (state.page === "sources") await renderSources();
+    else renderMethod();
+  } catch (e) {
+    notify(e.message, true);
+  }
+}
+async function loadEvents(id) {
+  state.events = await api("/events");
+  const selected = id || state.event?.id || state.events[0]?.id;
+  state.event =
+    selected && state.events.some((e) => e.id === selected)
+      ? await api("/events/" + selected)
+      : null;
+}
+function addArticle() {
+  const row = document.createElement("fieldset");
+  row.className = "manual-article";
+  row.innerHTML = `<legend>Kaynak ${$$(".manual-article").length + 1}</legend><label>Yayıncı adı<input class="manual-source" required maxlength="150"></label><label>Başlık<input class="manual-title" required minlength="4" maxlength="500"></label><label>Metin<textarea class="manual-text" required minlength="20" maxlength="100000" rows="5"></textarea></label><label>Kapsam<select class="manual-scope"><option value="provided_excerpt">Kısmi metin / alıntı</option><option value="full_text">Tam haber metni</option></select></label><label>Kaynak URL (isteğe bağlı)<input class="manual-url" type="url" placeholder="https://"></label><button type="button" class="secondary" data-remove="article">Kaynağı kaldır</button>`;
+  $("#manual-articles").append(row);
+}
+async function initialize() {
+  state.config = await api("/config");
+  $("#mode").textContent =
+    state.config.mode === "demo" ? "KURGU DEMO" : "CANLI ÇALIŞMA";
+  $("#mode").classList.toggle("demo", state.config.mode === "demo");
+  if (state.config.auth_required && !state.token) {
+    $("#view").innerHTML =
+      '<div class="empty"><h1>Çalışma alanınız hazır</h1><p>Haberleri ve incelemeleri görmek için erişim anahtarınızı girin.</p><button data-action="auth">Giriş yap</button></div>';
+    $("#auth").showModal();
+    return;
+  }
+  state.user = await api("/me");
+  $("#identity").textContent = state.user.id;
+  state.taxonomy = (await api("/taxonomy")).entries;
+  await loadEvents();
+  await render();
+}
+document.addEventListener("click", async (event) => {
+  const b = event.target.closest("button");
+  if (!b) return;
+  if (b.dataset.close) {
+    $("#" + b.dataset.close).close();
+    return;
+  }
+  if (b.dataset.page) {
+    state.page = b.dataset.page;
+    await render();
+    return;
+  }
+  if (b.dataset.remove) {
+    b.closest(
+      b.dataset.remove === "quote" ? ".evidence-input" : ".manual-article",
+    ).remove();
+    return;
+  }
+  if (b.dataset.quote !== undefined) {
+    showEvidence(state.quotes[Number(b.dataset.quote)]);
+    return;
+  }
+  if (b.dataset.finding) {
+    const f = state.event.analysis.payload.findings.find(
+      (f) => f.id === b.dataset.finding,
+    );
+    showEvidence(f.evidence, f);
+    return;
+  }
+  if (b.dataset.reviewProof) {
+    const f = state.reviewRows.find((r) => r.id === b.dataset.reviewProof)
+      .payload.replacement;
+    showEvidence(f.evidence, f);
+    return;
+  }
+  if (b.dataset.review) {
+    openReview(b.dataset.review);
+    return;
+  }
+  if (b.dataset.decision) {
+    state.decisionId = b.dataset.decision;
+    $("#decision-form").reset();
+    $("#decision-error").hidden = true;
+    $("#decision-dialog").showModal();
+    return;
+  }
+  if (b.dataset.move) {
+    await busy(b, async () => {
+      const target = $(".move-target", b.parentElement).value;
+      if (!target) throw new Error("Hedef olay seçin.");
+      await post("/articles/" + b.dataset.move + "/move", { event_id: target });
+      await loadEvents();
+      await render();
+    });
+    return;
+  }
+  const action = b.dataset.action;
+  if (action === "auth") $("#auth").showModal();
+  if (action === "manual") {
+    $("#manual-form").reset();
+    $("#manual-articles").innerHTML = "";
+    addArticle();
+    addArticle();
+    $("#manual-error").hidden = true;
+    $("#manual-dialog").showModal();
+  }
+  if (action === "add-finding") openReview();
+  if (action === "analyze")
+    await busy(b, async () => {
+      const sensitivity = $("#sensitivity").value;
+      await post("/events/" + state.event.id + "/analyze", {
+        sensitivity,
+        force: true,
+      });
+      await loadEvents();
+      await render();
+      notify(
+        state.config.mode === "demo"
+          ? "Kurgu örnek gösteriliyor; canlı model çalıştırılmadı."
+          : "Kanıtları doğrulanan analiz kaydedildi.",
+      );
+    });
+  if (action === "collect")
+    await busy(b, async () => {
+      const r = await post("/collect");
+      notify(
+        `${r.feeds.length} akış kontrol edildi. Başarısız kontroller kaynak tablosunda gösterilir.`,
+      );
+      await loadEvents();
+      await renderSources();
+    });
+  if (action === "export")
+    await busy(b, async () => {
+      const response = await fetch("/api/export", {
+        headers: state.token ? { Authorization: "Bearer " + state.token } : {},
+      });
+      if (!response.ok)
+        throw new Error("Dışa aktarma için editör erişimi gerekli.");
+      const text = await response.text();
+      if (!text.trim()) {
+        notify("Dışa aktarılacak onaylı gerçek haber kaydı yok.");
+        return;
+      }
+      const url = URL.createObjectURL(
+        new Blob([text], { type: "application/x-ndjson" }),
+      );
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "reviewed_annotations.jsonl";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+});
+document.addEventListener("change", async (e) => {
+  if (e.target.id === "event-select") {
+    await loadEvents(e.target.value);
+    await render();
+  }
+  if (e.target.id === "verdict")
+    $("#replacement").hidden = !["correct", "add"].includes(e.target.value);
+});
+document.addEventListener("input", (e) => {
+  if (e.target.id === "concept-search")
+    renderGlossary(e.target.value.toLocaleLowerCase("tr"));
+});
+$("#auth-open").onclick = () => $("#auth").showModal();
+$("#add-quote").onclick = () => addQuote();
+$("#add-article").onclick = () => {
+  if ($$(".manual-article").length < 25) addArticle();
+};
+$("#auth-form").onsubmit = async (e) => {
+  e.preventDefault();
+  state.token = $("#token").value.trim();
+  $("#auth").close();
+  $("#token").value = "";
+  await initialize().catch((e) => notify(e.message, true));
+};
+$("#review-form").onsubmit = async (e) => {
+  e.preventDefault();
+  const button = $("button[type=submit]", e.target);
+  button.disabled = true;
+  try {
+    const verdict = $("#verdict").value;
+    const id = state.reviewFinding?.id || "human-" + crypto.randomUUID();
+    const replacement = ["correct", "add"].includes(verdict)
+      ? {
+          id,
+          concept_id: $("#concept").value,
+          layer: concept($("#concept").value).layer,
+          status: $("#finding-status").value,
+          attribution: $("#attribution").value,
+          explanation_tr: $("#explanation").value,
+          alternative_explanation_tr: $("#alternative").value,
+          missing_context_tr: $("#missing").value,
+          reader_impact_tr: $("#impact").value,
+          evidence: $$(".evidence-input").map((r) => ({
+            article_id: $(".quote-article", r).value,
+            quote: $(".quote-text", r).value,
+          })),
+        }
+      : null;
+    await post(`/analyses/${state.event.analysis.id}/reviews`, {
+      finding_id: id,
+      verdict,
+      replacement,
+      notes: $("#review-notes").value,
+    });
+    $("#review-dialog").close();
+    notify(
+      "İnceleme kaydedildi. Eğitim çıktısı için farklı bir editörün kararı gerekir.",
+    );
+    if (state.page === "reviews") await render();
+  } catch (error) {
+    $("#review-error").textContent = error.message;
+    $("#review-error").hidden = false;
+  } finally {
+    button.disabled = false;
+  }
+};
+$("#decision-form").onsubmit = async (e) => {
+  e.preventDefault();
+  const b = $("button[type=submit]", e.target);
+  b.disabled = true;
+  try {
+    await post(`/analyses/${state.event.analysis.id}/decisions`, {
+      review_id: state.decisionId,
+      notes: $("#decision-notes").value,
+    });
+    $("#decision-dialog").close();
+    await render();
+    notify("Editör kararı kaydedildi.");
+  } catch (error) {
+    $("#decision-error").textContent = error.message;
+    $("#decision-error").hidden = false;
+  } finally {
+    b.disabled = false;
+  }
+};
+$("#manual-form").onsubmit = async (e) => {
+  e.preventDefault();
+  const b = $("button[type=submit]", e.target);
+  b.disabled = true;
+  try {
+    const articles = $$(".manual-article").map((r) => ({
+      source_id: $(".manual-source", r).value.trim().toLocaleLowerCase("tr"),
+      source_name: $(".manual-source", r).value.trim(),
+      title: $(".manual-title", r).value,
+      text: $(".manual-text", r).value,
+      url: $(".manual-url", r).value,
+      content_scope: $(".manual-scope", r).value,
+    }));
+    const result = await post("/events", {
+      title: $("#event-title").value,
+      articles,
+    });
+    $("#manual-dialog").close();
+    await loadEvents(result.id);
+    state.page = "compare";
+    await render();
+  } catch (error) {
+    $("#manual-error").textContent = error.message;
+    $("#manual-error").hidden = false;
+  } finally {
+    b.disabled = false;
+  }
+};
+initialize().catch((e) => notify(e.message, true));
