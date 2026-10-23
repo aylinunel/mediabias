@@ -40,6 +40,12 @@ Article text comes from schema.org `NewsArticle`/`Article` JSON-LD (`articleBody
 - Links still refused or failing are kept in a per-outlet retry queue (`crawl-pending:<source_id>` in the feed-state table) and retried on every later run, including `--follow` runs. Links outside the current window are retried too. After 10 attempts a link is marked `given_up` but stays listed. `mediabias crawl-report --output pending.csv` lists every waiting or given-up link.
 - Ten consecutive refusals stop that outlet for the run (`access_restricted`); the remaining links go into the queue rather than being dropped. Robots rules and Crawl-delay are honoured; one request at a time per host with a minimum delay. Sitemaps are capped at 300 per outlet and 50 MB decompressed; pages at 3 MB.
 
+Discovery also covers outlets without sitemaps. When sitemaps yield nothing, or the window reaches the last three days, the crawler reads the homepage, up to ten section pages linked from it (gündem, siyaset, ekonomi…) and the outlet's enabled feeds. It takes article-shaped links from them: a long numeric ID, a `/YYYY/MM/DD/` path or `,<id>`. These pages only show recent links, so outlets without archive sitemaps cannot be backfilled beyond what the RSS collector already stored. Their summaries say `no_discovery_source` when nothing at all was reachable.
+
+Hosts: an outlet's registered hosts include their subdomains (`spor.haber7.com`, `media-cdn.t24.com.tr`); Turkish second-level domains such as `.com.tr` are handled. Lookalike domains are not included. `data/crawl_overrides.json` holds survey-verified per-outlet hints: extra hosts (Haber Global moved to `haberglobal.com`), extra sitemaps and listing pages.
+
+Sitemap entries for video and photo-gallery pages are skipped. Undated entries take their date from a `/YYYY/MM/DD/` URL path when present. Archive sitemap names are recognised in several forms: `?year=2026&month=9`, `/2026/9`, `news-2026-09.xml`, `sitemap-20261022.xml`, `09-2026.xml.gz`. Breaking-news placeholders ("Ayrıntılar geliyor…") are not stored; they go to the retry queue and are fetched again on a later run.
+
 Stored rows use `content_scope = "full_text"`. An existing feed excerpt with the same URL is upgraded in place; its hash changes, so earlier analyses of the excerpt show as stale rather than being altered. Selectors cannot fit every template: check each outlet's `crawl:<id>` summary after the first run (`no_body` counts point to an outlet that needs a selector added to `BODY_SELECTORS`).
 
 ## Versioning

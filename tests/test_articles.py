@@ -1,7 +1,7 @@
 import asyncio
 import gzip
 import json
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from unittest.mock import patch
 
 import httpx
@@ -336,3 +336,105 @@ def test_every_registered_outlet_is_crawlable():
     assert all(s["website"] and s["website"].startswith("https://") for s in register)
     settings = Settings(database_url="sqlite:///:memory:")
     assert len(Crawler(settings, None).sources()) == 53
+
+
+# --------------------------------------------------------------------------- survey-driven behaviour
+
+
+def test_subdomains_of_the_outlet_are_allowed_but_lookalikes_are_not():
+    from mediabias.articles import AllowedHosts
+
+    allowed = AllowedHosts({"haber7.com", "t24.com.tr"})
+    assert "spor.haber7.com" in allowed and "media-cdn.t24.com.tr" in allowed
+    assert "evilhaber7.com" not in allowed and "other.com.tr" not in allowed and "com.tr" not in allowed
+
+
+@pytest.mark.parametrize(
+    "url, expected",
+    [
+        ("https://www.ekonomim.com/sitemap/2026/9", (date(2026, 9, 1), date(2026, 9, 30))),
+        ("https://onedio.com/secure/sitemap/09-2026.xml.gz", (date(2026, 9, 1), date(2026, 9, 30))),
+        ("https://media-cdn.t24.com.tr/media/sitemaps/sitemap-20261022.xml", (date(2026, 10, 22),) * 2),
+        ("https://www.trthaber.com/sitemaps/news-2026-09.xml", (date(2026, 9, 1), date(2026, 9, 30))),
+    ],
+)
+def test_survey_archive_sitemap_names(url, expected):
+    assert sitemap_period(url) == expected
+
+
+def test_media_pages_and_url_dates():
+    from mediabias.articles import is_media, url_date
+
+    assert is_media("https://www.yenisafak.com/video/gundem/x-123456")
+    assert is_media("https://www.ekonomim.com/foto/x-galeri-926664")
+    assert not is_media("https://www.sabah.com.tr/gundem/2026/10/22/videolu-degil-haber")
+    assert url_date("https://www.sabah.com.tr/gundem/2026/10/22/x") == datetime(
+        2026, 10, 22, 9, tzinfo=timezone.utc
+    )
+
+
+def test_breaking_news_stub_is_queued_for_a_later_fetch():
+    stub = page(
+        {
+            "@type": "NewsArticle",
+            "headline": "Son dakika",
+            "datePublished": "2026-09-06",
+            "articleBody": "Son dakika: Meclis'te kritik oylama tamamlandı. Ayrıntılar geliyor... " * 5,
+        }
+    )
+    assert extract(stub, "https://x.tr/a")["reason"] == "stub"
+    r = run_crawl(*WINDOW, respond=flaky([], lambda n: httpx.Response(200, text=stub)))
+    assert r["outcome"]["skipped"]["stub"] == 1
+    assert [(x["url"].rsplit("/", 1)[1], x["last_reason"]) for x in r["report"]] == [("yasak", "stub")]
+
+
+def test_outlet_without_sitemaps_is_discovered_from_homepage_sections_and_feed():
+    """Posta/Vatan/CNN Türk/Milliyet/DHA-style outlet: no Sitemap line, sitemap guesses fail."""
+    from mediabias.db import now
+
+    today = now().astimezone(timezone.utc)
+    stamp = today.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+    article = page(
+        {"@type": "NewsArticle", "headline": "Yeni haber", "datePublished": stamp, "articleBody": BODY}
+    )
+    home = (
+        '<a href="/gundem">Gündem</a><a href="/ekonomi/kur-artisi-2419590">a</a>'
+        '<a href="https://spor.example.com.tr/futbol/mac-3670785">b</a>'
+        '<a href="/video/izle-1234567">video</a><a href="/hakkimizda">static</a>'
+        '<a href="https://elsewhere.example/x-1234567">foreign</a>'
+    )
+    section = '<a href="/gundem/meclis-karari-2419600">c</a>'
+    requested = []
+
+    def respond(request):
+        requested.append(str(request.url))
+        path = request.url.path
+        if path == "/robots.txt":
+            return httpx.Response(200, text="User-agent: *\nDisallow: /arama/\n")
+        if path == "/":
+            return httpx.Response(200, text=home)
+        if path == "/gundem":
+            return httpx.Response(200, text=section)
+        if path in {"/ekonomi/kur-artisi-2419590", "/futbol/mac-3670785", "/gundem/meclis-karari-2419600"}:
+            return httpx.Response(200, text=article.replace("Yeni haber", "Haber " + path[-7:]))
+        return httpx.Response(404, text="yok")
+
+    end = now()
+    r = run_crawl(end - timedelta(hours=48), end, respond=respond)
+    assert sorted(a.url.rsplit("-", 1)[1] for a in r["articles"]) == ["2419590", "2419600", "3670785"]
+    assert not any("/video/" in u or "hakkimizda" in u or "elsewhere" in u for u in requested)
+    assert r["outcome"]["sitemap_errors"] == len(__import__("mediabias.articles").articles.FALLBACK_SITEMAPS)
+
+
+def test_old_backfill_does_not_trawl_homepage_when_sitemaps_answer():
+    r = run_crawl(*WINDOW)
+    assert "listing_pages_read" not in r["outcome"]
+    assert not any(u.rstrip("/") == "https://www.example.com.tr" for u in r["requested"])
+
+
+def test_overrides_file_is_valid_and_names_registered_outlets():
+    from mediabias.articles import OVERRIDES_PATH
+
+    ids = {s["id"] for s in json.loads((DATA / "sources.json").read_text())["sources"]}
+    data = json.loads(OVERRIDES_PATH.read_text())
+    assert set(data) - {"_note"} <= ids

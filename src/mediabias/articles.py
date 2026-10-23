@@ -21,11 +21,13 @@ from datetime import time as dtime
 from urllib.parse import parse_qsl, urljoin, urlsplit
 from urllib.robotparser import RobotFileParser
 
+import feedparser
 import httpx
 from bs4 import BeautifulSoup
 from defusedxml import ElementTree
 from sqlalchemy import select
 
+from .config import DATA
 from .db import Article, FeedState, now
 from .feeds import candidate_event, canonical, clean, host, public_url
 
@@ -39,6 +41,43 @@ MAX_PAGE_BYTES = 3_000_000
 MAX_SITEMAP_BYTES = 50_000_000  # sitemaps.org limit for an uncompressed sitemap
 MAX_SITEMAPS_PER_SOURCE = 300
 MIN_TEXT_CHARS = 300
+MAX_LISTING_PAGES = 30
+RETRYABLE = {"blocked", "fetch_error", "stub"}
+OVERRIDES_PATH = DATA / "crawl_overrides.json"
+# Turkish second-level domains: subdomains of www.example.com.tr share "example.com.tr".
+SECOND_LEVEL = {
+    "com.tr",
+    "net.tr",
+    "org.tr",
+    "gen.tr",
+    "gov.tr",
+    "web.tr",
+    "biz.tr",
+    "info.tr",
+    "tv.tr",
+    "bel.tr",
+}
+SECTION_SLUGS = {
+    "gundem",
+    "siyaset",
+    "politika",
+    "ekonomi",
+    "dunya",
+    "turkiye",
+    "son-dakika",
+    "sondakika",
+    "yazarlar",
+    "guncel",
+    "haberler",
+    "haber",
+}
+MEDIA_PATH = re.compile(
+    r"(^|/)(video|videolar|galeri|fotogaleri|foto-galeri|foto|webtv|tv|canli-yayin|podcast|infografik)(/|$)"
+    r"|-galeri-\d+|(^|/)video-",
+    re.I,
+)
+ARTICLE_LINK = re.compile(r"\d{5,}(h|-haberi)?(\.html?|\.htm|/)?$|/20\d\d/\d\d/\d\d/|,\d{5,}$")
+STUB_MARKERS = ("ayrıntılar geliyor", "detaylar geliyor", "ayrıntılar birazdan", "haberin detayları geliyor")
 FALLBACK_SITEMAPS = (
     "/sitemap.xml",
     "/sitemap_index.xml",
@@ -239,6 +278,39 @@ def gunzip(data):
     return out
 
 
+def registrable(hostname):
+    parts = hostname.split(".")
+    if len(parts) >= 3 and ".".join(parts[-2:]) in SECOND_LEVEL:
+        return ".".join(parts[-3:])
+    return ".".join(parts[-2:])
+
+
+class AllowedHosts(frozenset):
+    """Registered hosts plus their subdomains (spor.haber7.com, media-cdn.t24.com.tr)."""
+
+    def __new__(cls, hosts):
+        self = super().__new__(cls, {h for h in hosts if h})
+        self.domains = {registrable(h) for h in self}
+        return self
+
+    def __contains__(self, hostname):
+        return frozenset.__contains__(self, hostname) or any(
+            hostname == d or hostname.endswith("." + d) for d in self.domains
+        )
+
+
+def is_media(url):
+    return bool(MEDIA_PATH.search(urlsplit(url).path))
+
+
+def url_date(url):
+    match = re.search(r"/(20\d\d)/(0[1-9]|1[0-2])/(0[1-9]|[12]\d|3[01])/", urlsplit(url).path)
+    if not match:
+        return None
+    y, m, d = map(int, match.groups())
+    return datetime(y, m, d, 12, tzinfo=ISTANBUL).astimezone(timezone.utc)
+
+
 # --------------------------------------------------------------------------- robots
 
 
@@ -317,14 +389,21 @@ def sitemap_period(url):
         params.get("day"),
     )
     if not (y and y.isdigit()):
-        match = re.search(r"(20\d{2})[-/_]?(0[1-9]|1[0-2])(?:[-/_]?(0[1-9]|[12]\d|3[01]))?(?!\d)", url)
-        if not match:
-            match = re.search(r"(20\d{2})(?!\d)", urlsplit(url).path)
-            if not match:
-                return None
-            y, m, d = match.group(1), None, None
+        path = urlsplit(url).path
+        padded = re.search(r"(20\d{2})[-/_]?(0[1-9]|1[0-2])(?:[-/_]?(0[1-9]|[12]\d|3[01]))?(?!\d)", path)
+        loose = re.search(r"(20\d{2})[-/_](1[0-2]|[1-9])(?!\d)", path)  # /sitemap/2026/9
+        reverse = re.search(r"(?<!\d)(0?[1-9]|1[0-2])[-_](20\d{2})(?!\d)", path)  # 09-2026.xml.gz
+        year = re.search(r"(20\d{2})(?!\d)", path)
+        if padded:
+            y, m, d = padded.groups()
+        elif loose:
+            y, m, d = loose.group(1), loose.group(2), None
+        elif reverse:
+            y, m, d = reverse.group(2), reverse.group(1), None
+        elif year:
+            y, m, d = year.group(1), None, None
         else:
-            y, m, d = match.groups()
+            return None
     y = int(y)
     if m and str(m).isdigit():
         m = int(m)
@@ -372,7 +451,10 @@ async def discover(fetcher, allowed, robots, roots, start, end, cap):
                     queue.append((entry["loc"], dated))
             continue
         for entry in entries:
-            stamp = entry["published"] or entry["lastmod"]
+            if is_media(entry["loc"]):
+                stats["media_skipped"] = stats.get("media_skipped", 0) + 1
+                continue
+            stamp = entry["published"] or entry["lastmod"] or url_date(entry["loc"])
             if stamp is None and not dated_scope:
                 continue  # no date and the sitemap itself is not date-scoped
             if stamp is not None and not (start <= stamp <= end):
@@ -387,6 +469,75 @@ async def discover(fetcher, allowed, robots, roots, start, end, cap):
             if len(found) >= cap:
                 break
     return found, stats
+
+
+def feed_links(data):
+    """(url, published) pairs if `data` is an RSS/Atom feed, else None. XML is vetted by defusedxml."""
+    try:
+        root = ElementTree.fromstring(data)
+    except (ElementTree.ParseError, ValueError):
+        return None
+    if local(root.tag) not in {"rss", "feed", "rdf"}:
+        return None
+    out = []
+    for entry in feedparser.parse(data).entries[:300]:
+        stamp = entry.get("published_parsed") or entry.get("updated_parsed")
+        published = datetime(*stamp[:6], tzinfo=timezone.utc) if stamp else None
+        if entry.get("link"):
+            out.append((entry["link"], published))
+    return out
+
+
+def page_links(data, base):
+    soup = BeautifulSoup(data, "html.parser")
+    return [urljoin(base, a["href"]) for a in soup.find_all("a", href=True)]
+
+
+async def listing(fetcher, allowed, robots, pages, start, end, cap):
+    """Article links from the homepage, section pages and feeds, for outlets without usable sitemaps
+    and for the newest items. Undated links are kept; the article page's own date decides."""
+    found, seen, queue = {}, set(), list(dict.fromkeys(pages))
+    stats = {"listing_pages_read": 0, "listing_errors": 0}
+    while queue and stats["listing_pages_read"] < MAX_LISTING_PAGES and len(found) < cap:
+        page = queue.pop(0)
+        if page in seen or host(page) not in allowed or not robots.can_fetch(ROBOTS_AGENT, page):
+            continue
+        seen.add(page)
+        try:
+            data, final, _ = await fetcher.get(
+                page, allowed, MAX_PAGE_BYTES, "text/html, application/rss+xml"
+            )
+        except (Blocked, ValueError, httpx.HTTPError, OSError):
+            stats["listing_errors"] += 1
+            continue
+        stats["listing_pages_read"] += 1
+        from_feed = feed_links(data)
+        links = from_feed if from_feed is not None else [(u, None) for u in page_links(data, final)]
+        for link, published in links:
+            loc = canonical(link)
+            path = urlsplit(loc).path
+            if host(loc) not in allowed or urlsplit(loc).scheme != "https" or is_media(loc):
+                continue
+            if from_feed is None and path.strip("/").lower() in SECTION_SLUGS and len(seen) < 10:
+                queue.append(loc)  # follow a few section pages from the homepage
+                continue
+            if from_feed is None and not ARTICLE_LINK.search(path):
+                continue
+            stamp = published or url_date(loc)
+            if stamp is not None and not (start <= stamp <= end):
+                continue
+            if robots.can_fetch(ROBOTS_AGENT, loc):
+                found.setdefault(loc, {"published": stamp, "title": None})
+            if len(found) >= cap:
+                break
+    return found, stats
+
+
+def overrides():
+    try:
+        return json.loads(OVERRIDES_PATH.read_text())
+    except FileNotFoundError:
+        return {}
 
 
 # --------------------------------------------------------------------------- extraction
@@ -470,8 +621,11 @@ def extract(html, url):
         text, result["method"] = html_body(soup), "html"
     result["text"] = text
     free = article.get("isAccessibleForFree")
+    lowered = text[:2000].lower()
     if free is False or str(free).lower() == "false":
         result["reason"] = "paywalled"
+    elif len(text) < 1500 and any(marker in lowered for marker in STUB_MARKERS):
+        result["reason"] = "stub"  # breaking-news placeholder; fetched again on a later run
     elif not result["title"]:
         result["reason"] = "no_title"
     elif not result["published_at"]:
@@ -586,8 +740,12 @@ class Crawler:
 
     async def one(self, fetcher, source, start, end, cap):
         website = source.get("website") or ""
-        allowed = {host(website)} | {host(f["url"]) for f in source.get("feeds", [])}
-        allowed.discard("")
+        extra = overrides().get(source["id"], {})
+        allowed = AllowedHosts(
+            {host(website)}
+            | {host(f["url"]) for f in source.get("feeds", [])}
+            | set(extra.get("extra_hosts", []))
+        )
         outcome = {
             "source_id": source["id"],
             "window": [start.isoformat(), end.isoformat()],
@@ -610,9 +768,21 @@ class Crawler:
             delay = robots.crawl_delay(ROBOTS_AGENT)
             if delay:
                 fetcher.gate.extra[host(website)] = float(delay)
-            roots = listed or [urljoin(website, p) for p in FALLBACK_SITEMAPS]
+            roots = list(dict.fromkeys(extra.get("sitemaps", []) + listed)) or [
+                urljoin(website, p) for p in FALLBACK_SITEMAPS
+            ]
             found, stats = await discover(fetcher, allowed, robots, roots, start, end, cap)
             outcome.update(stats, sitemap_roots="robots.txt" if listed else "fallback")
+            # Homepage, sections and feeds: needed for outlets without sitemaps, and they catch the newest
+            # items. Only useful while the window reaches the present: listing pages show recent links.
+            if not found or end >= now() - timedelta(days=3):
+                pages = [website] + [f["url"] for f in source.get("feeds", []) if f.get("enabled")]
+                listed_links, listing_stats = await listing(
+                    fetcher, allowed, robots, pages + extra.get("listing_pages", []), start, end, cap
+                )
+                outcome.update(listing_stats)
+                for url, hint in listed_links.items():
+                    found.setdefault(url, hint)
             done, excerpts = self.known(source, start, end)
             for url, hint in excerpts.items():
                 found.setdefault(url, hint)  # RSS-collected articles get their full text too
@@ -634,7 +804,7 @@ class Crawler:
                     refused_streak = 0
                     continue
                 outcome["skipped"][reason] = outcome["skipped"].get(reason, 0) + 1
-                if reason in {"blocked", "fetch_error"}:
+                if reason in RETRYABLE:
                     info = queue_state.setdefault(
                         url, {"attempts": 0, "first_seen": now().isoformat(), "published": None}
                     )
@@ -656,6 +826,11 @@ class Crawler:
             outcome["status"] = (
                 "access_restricted"
                 if outcome["error"]
+                else "no_discovery_source"
+                if not work
+                and not done
+                and not stats["sitemaps_read"]
+                and not outcome.get("listing_pages_read")
                 else "ok"
                 if outcome["inserted"] + outcome["upgraded"] + outcome["unchanged"]
                 else "no_usable_articles"

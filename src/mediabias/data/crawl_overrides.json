@@ -1,0 +1,9 @@
+{
+  "_note": "Per-outlet crawl hints verified in the 23 Oct 2026 site survey. Keys are register source IDs.",
+  "haberglobal": {
+    "extra_hosts": ["haberglobal.com"],
+    "sitemaps": ["https://haberglobal.com/export/newsmap", "https://haberglobal.com/sitemap.xml"]
+  },
+  "hurriyet": {"listing_pages": ["https://www.hurriyet.com.tr/rss/anasayfa"]},
+  "yeniasya": {"sitemaps": ["https://www.yeniasya.com.tr/sitemap.xml"]}
+}
