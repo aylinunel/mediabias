@@ -8,7 +8,16 @@ import httpx
 import pytest
 from sqlalchemy import select
 
-from mediabias.articles import Crawler, extract, gunzip, parse_sitemap, sitemap_period, window
+from mediabias.articles import (
+    Crawler,
+    Fetcher,
+    HostGate,
+    extract,
+    gunzip,
+    parse_sitemap,
+    sitemap_period,
+    window,
+)
 from mediabias.config import DATA, Settings
 from mediabias.db import Article, Base, FeedState, database
 
@@ -97,33 +106,48 @@ def handler(requested):
     return respond
 
 
-def run_crawl(start, end, db=None):
-    settings = Settings(database_url="sqlite:///:memory:", crawl_delay_seconds=0.5)
+def run_crawl(start, end, db=None, respond=None, **overrides):
+    settings = Settings(database_url="sqlite:///:memory:", crawl_delay_seconds=0.5, **overrides)
     engine, sessions = db or database(settings.database_url)
     Base.metadata.create_all(engine)
     source = {"id": "ornek", "name": "Örnek", "website": "https://www.example.com.tr", "feeds": []}
-    requested = []
+    requested, slept = [], []
     crawler = Crawler(settings, sessions)
 
-    async def go():
-        transport = httpx.MockTransport(handler(requested))
-        async with httpx.AsyncClient(transport=transport) as client:
-            from mediabias.articles import HostGate
+    async def no_sleep(seconds):
+        slept.append(seconds)
 
-            return await crawler.one(client, HostGate(0), source, start, end, 100)
+    async def go():
+        transport = httpx.MockTransport(respond or handler(requested))
+        async with httpx.AsyncClient(transport=transport) as client:
+            fetcher = Fetcher(client, HostGate(0), settings, no_sleep)
+            return await crawler.one(fetcher, source, start, end, 100)
 
     with patch("mediabias.feeds.socket.getaddrinfo", return_value=PUBLIC_DNS):
         outcome = asyncio.run(go())
     with sessions() as s:
         articles = s.scalars(select(Article).order_by(Article.url)).all()
         state = s.get(FeedState, "crawl:ornek").payload
+    report = crawler.report()
     if db is None:
         engine.dispose()
-    return outcome, articles, state, requested
+    return {
+        "outcome": outcome,
+        "articles": articles,
+        "state": state,
+        "requested": requested,
+        "slept": slept,
+        "report": report,
+    }
+
+
+WINDOW = window(date(2026, 9, 1), date(2026, 10, 10))
+UNLOCKER = {"BRIGHTDATA_API_KEY": "key", "BRIGHTDATA_UNLOCKER_ZONE": "web_unlocker1"}
 
 
 def test_end_to_end_backfill_from_sitemaps():
-    outcome, articles, state, requested = run_crawl(*window(date(2026, 9, 1), date(2026, 10, 10)))
+    r = run_crawl(*WINDOW)
+    outcome, articles, state, requested = r["outcome"], r["articles"], r["state"], r["requested"]
     assert [a.url for a in articles] == [
         "https://www.example.com.tr/gundem/html-haber",
         "https://www.example.com.tr/gundem/jsonld-haber",
@@ -135,19 +159,111 @@ def test_end_to_end_backfill_from_sitemaps():
     )
     assert outcome["inserted"] == 2 and outcome["skipped"] == {"paywalled": 1, "blocked": 1}
     assert outcome["candidates"] == 4
-    assert state["status"] == "ok"
+    assert state["status"] == "ok" and outcome["pending_links"] == 1
+    assert [(x["url"].rsplit("/", 1)[1], x["status"], x["last_reason"]) for x in r["report"]] == [
+        ("yasak", "pending", "blocked")
+    ]
     # Out-of-window month, foreign host, robots-disallowed path and old article are never requested.
     assert not any("month=6" in u or "elsewhere" in u or "/arama/" in u or "/eski" in u for u in requested)
 
 
-def test_rerun_skips_collected_articles():
-    start, end = window(date(2026, 9, 1), date(2026, 10, 10))
+def test_rerun_skips_collected_articles_and_retries_refused_link():
     db = database("sqlite:///:memory:")
-    first, *_ = run_crawl(start, end, db)
-    second, articles, _, requested = run_crawl(start, end, db)
+    first = run_crawl(*WINDOW, db)["outcome"]
+    second = run_crawl(*WINDOW, db)
     assert first["candidates"] == 4  # jsonld, html, paywalled, blocked; disallowed never queued
-    assert second["candidates"] == 2 and second["inserted"] == 0 and len(articles) == 2
-    assert not any(u.endswith(("/jsonld-haber", "/html-haber")) for u in requested[-6:])
+    assert second["outcome"]["candidates"] == 1  # paywalled is re-checked; collected ones are skipped
+    assert second["outcome"]["retried_from_queue"] == 1 and len(second["articles"]) == 2
+    assert not any(u.endswith(("/jsonld-haber", "/html-haber")) for u in second["requested"])
+    assert second["report"][0]["attempts"] == 2
+    db[0].dispose()
+
+
+def flaky(requested, behaviour):
+    """The example outlet, except /gundem/yasak follows `behaviour(call_number)`."""
+    base, calls = handler(requested), []
+
+    def respond(request):
+        if request.url.host == "api.brightdata.com":
+            requested.append("UNLOCKER " + json.loads(request.content)["url"])
+            body = json.loads(request.content)
+            assert body["zone"] == "web_unlocker1" and body["country"] == "tr" and body["format"] == "raw"
+            assert request.headers["authorization"] == "Bearer key"
+            return httpx.Response(200, text=YASAK)
+        if request.url.path == "/gundem/yasak":
+            requested.append(str(request.url))
+            calls.append(1)
+            return behaviour(len(calls))
+        return base(request)
+
+    return respond
+
+
+YASAK = page(
+    {"@type": "NewsArticle", "headline": "Engelli haber", "datePublished": "2026-09-06", "articleBody": BODY}
+)
+
+
+def test_rate_limit_waits_retry_after_then_succeeds():
+    requested = []
+    r = run_crawl(
+        *WINDOW,
+        respond=flaky(
+            requested,
+            lambda n: (
+                httpx.Response(429, headers={"retry-after": "7"})
+                if n < 3
+                else httpx.Response(200, text=YASAK)
+            ),
+        ),
+    )
+    assert r["outcome"]["inserted"] == 3 and r["outcome"]["pending_links"] == 0
+    assert r["slept"].count(7.0) == 2
+
+
+def test_challenge_page_with_200_is_a_refusal_not_an_article():
+    challenge = (
+        "<html><head><title>Just a moment...</title></head><body>cf-browser-verification</body></html>"
+    )
+    r = run_crawl(*WINDOW, respond=flaky([], lambda n: httpx.Response(200, text=challenge)))
+    assert r["outcome"]["skipped"]["blocked"] == 1 and r["outcome"]["pending_links"] == 1
+    assert not any("Engelli" in a.title or "moment" in a.title for a in r["articles"])
+
+
+def test_refused_page_fetched_through_unlocker_when_configured():
+    requested = []
+    r = run_crawl(*WINDOW, respond=flaky(requested, lambda n: httpx.Response(403)), **UNLOCKER)
+    assert r["outcome"]["inserted"] == 3 and r["outcome"]["via_unlocker"] == 1
+    assert r["outcome"]["pending_links"] == 0 and r["report"] == []
+    assert "UNLOCKER https://www.example.com.tr/gundem/yasak" in requested
+    # Paywalled pages are never sent to the unlocker.
+    assert not any(u.startswith("UNLOCKER") and "ucretli" in u for u in requested)
+
+
+def test_refused_robots_txt_is_read_through_unlocker_and_obeyed():
+    requested, base = [], handler([])
+
+    def respond(request):
+        if request.url.host == "api.brightdata.com":
+            target = json.loads(request.content)["url"]
+            requested.append("UNLOCKER " + target)
+            assert target.endswith("/robots.txt")
+            return httpx.Response(200, text=ROBOTS + "Disallow: /gundem/html-haber\n")
+        if request.url.path == "/robots.txt":
+            return httpx.Response(403)
+        return base(request)
+
+    r = run_crawl(*WINDOW, respond=respond, **UNLOCKER)
+    assert [a.url.rsplit("/", 1)[1] for a in r["articles"]] == ["jsonld-haber"]
+
+
+def test_link_given_up_after_repeated_refusals_stays_in_report():
+    db = database("sqlite:///:memory:")
+    for _ in range(10):
+        r = run_crawl(*WINDOW, db, respond=flaky([], lambda n: httpx.Response(403)))
+    assert r["outcome"]["given_up_links"] == 1 and r["report"][0]["status"] == "given_up"
+    eleventh = run_crawl(*WINDOW, db, respond=flaky([], lambda n: httpx.Response(403)))
+    assert eleventh["outcome"]["retried_from_queue"] == 0 and len(eleventh["report"]) == 1
     db[0].dispose()
 
 

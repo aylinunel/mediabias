@@ -77,6 +77,8 @@ def main():
     )
     crawler.add_argument("--max-per-source", type=int)
     crawler.add_argument("--follow", action="store_true", help="Then keep collecting a rolling recent window")
+    report = sub.add_parser("crawl-report", help="CSV of refused or failed links still waiting")
+    report.add_argument("--output", type=Path, required=True)
     evaluate = sub.add_parser("evaluate")
     evaluate.add_argument("--cases", type=Path, required=True)
     evaluate.add_argument("--output", type=Path, required=True)
@@ -96,6 +98,31 @@ def main():
         if settings.collector_mode != "worker":
             parser.error("CLI collection requires MEDIABIAS_COLLECTOR_MODE=worker.")
         asyncio.run(collect(settings, args.once))
+    elif args.command == "crawl-report":
+        import csv
+
+        from .articles import Crawler
+
+        engine, sessions = database(settings.database_url)
+        rows = Crawler(settings, sessions).report()
+        engine.dispose()
+        fields = [
+            "source_id",
+            "url",
+            "status",
+            "attempts",
+            "last_reason",
+            "published",
+            "first_seen",
+            "last_try",
+        ]
+        with args.output.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=fields)
+            writer.writeheader()
+            writer.writerows(rows)
+        print(
+            f"{len(rows)} links waiting ({sum(r['status'] == 'given_up' for r in rows)} given up) -> {args.output}"
+        )
     elif args.command == "crawl":
         if settings.mode != "live":
             parser.error("Crawling requires live mode; use migrate first.")

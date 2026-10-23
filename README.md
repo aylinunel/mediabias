@@ -57,7 +57,17 @@ mediabias crawl --follow                                  # then keep collecting
 mediabias crawl --since 2026-09-01 --sources sozcu,mynet --max-per-source 200   # trial on a few outlets
 ```
 
-It is resumable (already collected full-text URLs are skipped), honours robots.txt and Crawl-delay, waits at least `MEDIABIAS_CRAWL_DELAY_SECONDS` (default 2) between requests to one host, and stores a per-outlet summary under `crawl:<source_id>` in the feed-state table. Paywalled, undated, blocked and body-less pages are counted and skipped, never guessed.
+It is resumable (already collected full-text URLs are skipped), honours robots.txt and Crawl-delay, waits at least `MEDIABIAS_CRAWL_DELAY_SECONDS` (default 2) between requests to one host, and stores a per-outlet summary under `crawl:<source_id>` in the feed-state table. Paywalled, undated and body-less pages are counted and skipped, never guessed.
+
+Refused pages are retried politely. To fetch what publishers still refuse, set a Bright Data Web Unlocker zone; refused links then go through it, while paywalled articles are still skipped:
+
+```bash
+export MEDIABIAS_BRIGHTDATA_API_KEY=...        # or BRIGHTDATA_API_KEY
+export MEDIABIAS_BRIGHTDATA_ZONE=web_unlocker1 # or BRIGHTDATA_UNLOCKER_ZONE
+mediabias crawl-report --output pending.csv    # every link still waiting, with attempts and last reason
+```
+
+No refused link is dropped: each is retried on later runs and listed in the report until it is collected.
 
 Run exactly **one collector**, and one API process in this release. Worker mode disables the API collection button’s operation to avoid competing collectors. Both use the same database. Collection does not automatically incur inference charges; open a candidate event and request analysis.
 

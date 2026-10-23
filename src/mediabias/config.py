@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DATA = Path(__file__).parent / "data"
@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     crawl_delay_seconds: float = Field(2.0, ge=0.5, le=60)
     crawl_max_articles: int = Field(5000, ge=1, le=100000)
     crawl_follow_hours: int = Field(48, ge=6, le=24 * 14)
+    crawl_retries: int = Field(3, ge=0, le=6)
+    # Optional Bright Data Web Unlocker fallback, used only for pages a publisher refuses.
+    brightdata_api_key: str = Field(
+        "", validation_alias=AliasChoices("MEDIABIAS_BRIGHTDATA_API_KEY", "BRIGHTDATA_API_KEY")
+    )
+    brightdata_zone: str = Field(
+        "", validation_alias=AliasChoices("MEDIABIAS_BRIGHTDATA_ZONE", "BRIGHTDATA_UNLOCKER_ZONE")
+    )
     sources_path: Path = DATA / "sources.json"
     active_source_ids: list[str] = Field(default_factory=list)
     max_article_chars: int = Field(10000, ge=1000, le=30000)
