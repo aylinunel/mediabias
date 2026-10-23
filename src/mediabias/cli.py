@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import json
+from datetime import date
 from pathlib import Path
 
 from .config import Settings
@@ -35,6 +36,28 @@ async def collect(settings, once):
         engine.dispose()
 
 
+async def crawl(settings, since, until, sources, max_per_source, follow):
+    from datetime import timedelta
+
+    from .articles import Crawler, window
+    from .db import now
+
+    engine, sessions = database(settings.database_url)
+    crawler = Crawler(settings, sessions)
+    try:
+        if since:
+            start, end = window(since, until)
+            results = await crawler.crawl(start, end, sources, max_per_source)
+            print(json.dumps(results, ensure_ascii=False), flush=True)
+        while follow:
+            end = now()
+            results = await crawler.crawl(end - timedelta(hours=settings.crawl_follow_hours), end, sources)
+            print(json.dumps(results, ensure_ascii=False), flush=True)
+            await asyncio.sleep(settings.poll_seconds)
+    finally:
+        engine.dispose()
+
+
 def main():
     parser = argparse.ArgumentParser(description="Turkish news evidence workspace")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -44,6 +67,16 @@ def main():
     sub.add_parser("migrate")
     worker = sub.add_parser("collect")
     worker.add_argument("--once", action="store_true")
+    crawler = sub.add_parser("crawl", help="Full-text articles from every registered outlet's sitemaps")
+    crawler.add_argument(
+        "--since", type=date.fromisoformat, help="Backfill start, YYYY-MM-DD (Istanbul time)"
+    )
+    crawler.add_argument("--until", type=date.fromisoformat, help="Backfill end, inclusive; default now")
+    crawler.add_argument(
+        "--sources", type=lambda v: [s for s in v.split(",") if s], help="Comma-separated IDs"
+    )
+    crawler.add_argument("--max-per-source", type=int)
+    crawler.add_argument("--follow", action="store_true", help="Then keep collecting a rolling recent window")
     evaluate = sub.add_parser("evaluate")
     evaluate.add_argument("--cases", type=Path, required=True)
     evaluate.add_argument("--output", type=Path, required=True)
@@ -63,6 +96,12 @@ def main():
         if settings.collector_mode != "worker":
             parser.error("CLI collection requires MEDIABIAS_COLLECTOR_MODE=worker.")
         asyncio.run(collect(settings, args.once))
+    elif args.command == "crawl":
+        if settings.mode != "live":
+            parser.error("Crawling requires live mode; use migrate first.")
+        if not (args.since or args.follow):
+            parser.error("Give --since for a backfill, --follow for ongoing collection, or both.")
+        asyncio.run(crawl(settings, args.since, args.until, args.sources, args.max_per_source, args.follow))
     else:
         from .evaluation import evaluate
 

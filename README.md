@@ -49,6 +49,16 @@ mediabias collect             # continuously, every POLL_SECONDS after each run
 mediabias collect --once      # one pass instead
 ```
 
+**Full-text crawl (all 53 outlets):** RSS gives excerpts and covers only 26 outlets. `mediabias crawl` reads each registered outlet's own sitemaps (from robots.txt, or common sitemap paths) and fetches article pages for full text, so outlets without a working feed are covered too. RSS-collected excerpts in the window are upgraded to full text.
+
+```bash
+mediabias crawl --since 2026-09-01 --until 2026-10-10   # backfill the 2.0 data window
+mediabias crawl --follow                                  # then keep collecting the last 48 h, every POLL_SECONDS
+mediabias crawl --since 2026-09-01 --sources sozcu,mynet --max-per-source 200   # trial on a few outlets
+```
+
+It is resumable (already collected full-text URLs are skipped), honours robots.txt and Crawl-delay, waits at least `MEDIABIAS_CRAWL_DELAY_SECONDS` (default 2) between requests to one host, and stores a per-outlet summary under `crawl:<source_id>` in the feed-state table. Paywalled, undated, blocked and body-less pages are counted and skipped, never guessed.
+
 Run exactly **one collector**, and one API process in this release. Worker mode disables the API collection button’s operation to avoid competing collectors. Both use the same database. Collection does not automatically incur inference charges; open a candidate event and request analysis.
 
 ## Your source register

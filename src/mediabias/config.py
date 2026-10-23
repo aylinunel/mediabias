@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     http_concurrency: int = Field(5, ge=1, le=16)
     collector_mode: Literal["api", "worker"] = "api"
     poll_seconds: int = Field(600, ge=60)
+    # Full-text crawler: minimum seconds between requests to one host (robots Crawl-delay wins if larger)
+    crawl_delay_seconds: float = Field(2.0, ge=0.5, le=60)
+    crawl_max_articles: int = Field(5000, ge=1, le=100000)
+    crawl_follow_hours: int = Field(48, ge=6, le=24 * 14)
     sources_path: Path = DATA / "sources.json"
     active_source_ids: list[str] = Field(default_factory=list)
     max_article_chars: int = Field(10000, ge=1000, le=30000)

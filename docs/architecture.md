@@ -22,11 +22,19 @@ The code is modular and PostgreSQL-compatible, but this is not a distributed pro
 
 ## Feed policy
 
-Only operator-configured HTTPS feed URLs are fetched, using ordinary public requests. Redirects are limited and checked against configured publisher/feed hosts. Private/reserved IP resolutions, credentials, nonstandard ports, oversized decoded responses and malformed XML are rejected. HTML error/challenge pages are not accepted as feeds. There is no browser fallback, credential use, paywall bypass or arbitrary article URL fetching.
+Only operator-configured HTTPS feed URLs are fetched, using ordinary public requests. Redirects are limited and checked against configured publisher/feed hosts. Private/reserved IP resolutions, credentials, nonstandard ports, oversized decoded responses and malformed XML are rejected. HTML error/challenge pages are not accepted as feeds. There is no browser fallback, credential use, paywall bypass or arbitrary article URL fetching: article pages are requested only by the full-text crawler, only on a registered outlet's own hosts, and only when listed in that outlet's sitemaps or already collected from its feeds.
 
-ETag and Last-Modified are recorded for conditional requests. Each endpoint records checked time, HTTP status when available, parsing/usable counts, error class and last success. `unchanged` records an HTTP 304, not a new article. Stale, missing-date, future-dated and foreign-link items are excluded. A run reads at most 100 entries and ingests at most 12 usable items per endpoint; these throughput limits can miss a busy feed's older items. The initial version does not backfill archives.
+ETag and Last-Modified are recorded for conditional requests. Each endpoint records checked time, HTTP status when available, parsing/usable counts, error class and last success. `unchanged` records an HTTP 304, not a new article. Stale, missing-date, future-dated and foreign-link items are excluded. A run reads at most 100 entries and ingests at most 12 usable items per endpoint; these throughput limits can miss a busy feed's older items. The RSS collector does not backfill archives; the full-text crawler below does.
 
 Source IDs and all feed hostnames come from the supplied register. Cross-domain content delivery requires explicit operator verification and a registry change. The original spreadsheet’s `canlı` observations are provisional enablement, not a newly verified official-feed audit.
+
+## Full-text crawler
+
+`mediabias crawl` (module `articles.py`) works from every outlet in the register, with or without feeds. Per outlet it reads robots.txt; follows the `Sitemap:` lines or, if none are listed, tries common sitemap paths; walks sitemap indexes, skipping child sitemaps whose URL dates (for example `?year=2026&month=6`, `/2026/06/`) or `lastmod` fall outside the window; and keeps article URLs on the outlet's registered hosts whose publication date or lastmod is in the window. Undated entries are kept only from date-scoped sitemaps, and the page's own date then decides.
+
+Article text comes from schema.org `NewsArticle`/`Article` JSON-LD (`articleBody`, `headline`, `datePublished`, `author`), falling back to Open Graph/`article:published_time` metadata and paragraphs inside the article container. Naive timestamps are read as Istanbul time (UTC+3). Pages marked `isAccessibleForFree: false`, without a title, date or 300+ characters of body, or outside the window by more than a day are skipped with a counted reason. 401/403/451 responses count as `blocked`; ten in a row stop that outlet for the run (`access_restricted`). Robots rules and Crawl-delay are honoured; one request at a time per host with a minimum delay. Sitemaps are capped at 300 per outlet and 50 MB decompressed; pages at 3 MB.
+
+Stored rows use `content_scope = "full_text"`. An existing feed excerpt with the same URL is upgraded in place; its hash changes, so earlier analyses of the excerpt show as stale rather than being altered. Selectors cannot fit every template: check each outlet's `crawl:<id>` summary after the first run (`no_body` counts point to an outlet that needs a selector added to `BODY_SELECTORS`).
 
 ## Versioning
 
