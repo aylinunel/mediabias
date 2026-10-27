@@ -267,6 +267,22 @@ def test_link_given_up_after_repeated_refusals_stays_in_report():
     db[0].dispose()
 
 
+def test_unreachable_outlet_is_listed_in_report():
+    def down(request):
+        raise httpx.ConnectError("unreachable", request=request)
+
+    r = run_crawl(*WINDOW, respond=down)
+    assert r["outcome"]["status"] == "failed" and r["outcome"]["pending_links"] == 0
+    assert [(x["source_id"], x["url"], x["status"], x["last_reason"]) for x in r["report"]] == [
+        ("ornek", "", "outlet_failed", "ConnectError")
+    ]
+
+
+def test_healthy_outlet_has_no_outlet_row_in_report():
+    r = run_crawl(*WINDOW)
+    assert all(x["url"] for x in r["report"])
+
+
 def test_feed_excerpt_is_upgraded_to_full_text():
     settings = Settings(database_url="sqlite:///:memory:")
     engine, sessions = database(settings.database_url)

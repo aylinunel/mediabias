@@ -120,8 +120,11 @@ def main():
             writer = csv.DictWriter(handle, fieldnames=fields)
             writer.writeheader()
             writer.writerows(rows)
+        links = [r for r in rows if r["url"]]
+        outlets = sorted(r["source_id"] for r in rows if not r["url"])
         print(
-            f"{len(rows)} links waiting ({sum(r['status'] == 'given_up' for r in rows)} given up) -> {args.output}"
+            f"{len(links)} links waiting ({sum(r['status'] == 'given_up' for r in links)} given up), "
+            f"{len(outlets)} outlets with gaps{': ' + ', '.join(outlets) if outlets else ''} -> {args.output}"
         )
     elif args.command == "crawl":
         if settings.mode != "live":

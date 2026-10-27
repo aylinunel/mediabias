@@ -64,7 +64,7 @@ Refused pages are retried politely. To fetch what publishers still refuse, set a
 ```bash
 export MEDIABIAS_BRIGHTDATA_API_KEY=...        # or BRIGHTDATA_API_KEY
 export MEDIABIAS_BRIGHTDATA_ZONE=web_unlocker1 # or BRIGHTDATA_UNLOCKER_ZONE
-mediabias crawl-report --output pending.csv    # every link still waiting, with attempts and last reason
+mediabias crawl-report --output pending.csv    # every link still waiting, plus outlets that failed outright
 ```
 
 No refused link is dropped: each is retried on later runs and listed in the report until it is collected.

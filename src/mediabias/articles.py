@@ -675,6 +675,10 @@ def store(session, source, item):
 # --------------------------------------------------------------------------- orchestration
 
 
+# Outlet-level outcomes that mean links may be missing without any of them being queued.
+OUTLET_GAPS = {"failed", "access_restricted", "no_discovery_source"}
+
+
 class Crawler:
     def __init__(self, settings, sessions):
         self.settings, self.sessions = settings, sessions
@@ -865,10 +869,28 @@ class Crawler:
             return store(session, source, item), via
 
     def report(self):
-        """Rows for every link not yet collected after refusal or failure, across all outlets."""
+        """Rows for every link not yet collected after refusal or failure, across all outlets.
+
+        An outlet whose last run found no links at all (unreachable, refused, nothing to discover) gets one
+        row with an empty url, so a whole outlet is never missing from the report silently.
+        """
         with self.sessions() as session:
             states = session.scalars(select(FeedState).where(FeedState.url.like("crawl-pending:%"))).all()
-            rows = []
+            outlets = session.scalars(select(FeedState).where(FeedState.url.like("crawl:%"))).all()
+            rows = [
+                {
+                    "source_id": state.url.split(":", 1)[1],
+                    "url": "",
+                    "status": "outlet_" + state.payload["status"],
+                    "attempts": None,
+                    "last_reason": state.payload.get("error") or state.payload["status"],
+                    "published": None,
+                    "first_seen": None,
+                    "last_try": state.payload.get("checked_at"),
+                }
+                for state in outlets
+                if state.payload.get("status") in OUTLET_GAPS
+            ]
             for state in states:
                 for url, info in state.payload.get("links", {}).items():
                     rows.append(
